@@ -1,0 +1,10 @@
+{
+    "files.insertFinalNewline": true,
+    "editor.renderFinalNewline": false,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.formatOnPaste": true,
+    "clangd.arguments": [
+        "--header-insertion=never"
+    ]
+}

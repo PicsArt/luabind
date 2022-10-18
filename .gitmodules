@@ -1,0 +1,6 @@
+[submodule "third_party/lua/lua"]
+	path = third_party/lua/lua
+	url = https://github.com/lua/lua
+[submodule "third_party/googletest"]
+	path = third_party/googletest
+	url = https://github.com/google/googletest

@@ -1,0 +1,42 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 19,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "luabind",
+      "displayName": "luabind",
+      "description": "Configure debug build of a luabind library",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "luabind",
+      "displayName": "luabind",
+      "configurePreset": "luabind"
+    }
+  ],
+  "testPresets": [
+    {
+        "name": "unit_tests",
+        "displayName": "Unit Tests",
+        "configurePreset": "luabind",
+        "output": {
+            "outputOnFailure": true
+        },
+        "execution": {
+            "noTestsAction": "error",
+            "stopOnFailure": false
+        }
+    }
+  ]
+}

@@ -1,8 +1,6 @@
 #ifndef LUABIND_LUA_HPP
 #define LUABIND_LUA_HPP
 
-#if INCLUDE_LUA_LIB
-
 #if INCLUDE_LUA_LIB_WITH_EXTERN_C
 extern "C" {
 #endif // INCLUDE_LUA_LIB_WITH_EXTERN_C
@@ -14,7 +12,5 @@ extern "C" {
 #if INCLUDE_LUA_LIB_WITH_EXTERN_C
 }
 #endif // INCLUDE_LUA_LIB_WITH_EXTERN_C
-
-#endif // INCLUDE_LUA_LIB
 
 #endif // LUABIND_LUA_HPP

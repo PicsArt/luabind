@@ -200,6 +200,12 @@ struct value_mirror<std::string> {
     }
 };
 
+template <>
+struct value_mirror<const std::string&> : value_mirror<std::string> {};
+
+template <>
+struct value_mirror<const std::string*> {};
+
 template <typename T, typename Y>
 struct value_mirror<std::pair<T, Y>> {
     using type = std::pair<T, Y>;

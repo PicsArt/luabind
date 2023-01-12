@@ -322,7 +322,7 @@ TEST_F(LuaTest, Unbound) {
     luabind::function<&testUnboundByRef>(L, "testUnboundByRef");
     luabind::function<&testUnboundByConstRef>(L, "testUnboundByConstRef");
     luabind::function<&testUnbound>(L, "testUnbound");
-    int r = run(R"--(
+    [[maybe_unused]] int r = run(R"--(
         u = create()
         testUnboundByRef(u)
         testUnbound(u)

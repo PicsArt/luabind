@@ -64,7 +64,7 @@ struct value_mirror<T*> {
 template <typename T>
 struct value_mirror<T&> {
     static int to_lua(lua_State* L, T& v) {
-        value_mirror<T*>::to_lua(L, &v);
+        return value_mirror<T*>::to_lua(L, &v);
     }
 
     static T& from_lua(lua_State* L, int idx) {

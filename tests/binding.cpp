@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "lua_test.hpp"
+
 class Account : public luabind::Object {
 public:
     static int count;
@@ -67,49 +69,6 @@ public:
 
 public:
     int limit = 10;
-};
-
-class LuaTest : public testing::Test {
-protected:
-    LuaTest() {
-        L = luaL_newstate();
-        luaL_openlibs(L);
-    }
-
-    ~LuaTest() override {
-        if (L != nullptr) {
-            lua_close(L);
-        }
-    }
-
-public:
-    int run(const char* script) {
-        int r = luaL_dostring(L, script);
-        if (r != LUA_OK) {
-            const char* error = lua_tostring(L, -1);
-            std::cerr << "Error: " << error << std::endl;
-        }
-        return r;
-    }
-
-    template <typename T>
-    T runWithResult(const char* script) {
-        int r = luaL_dostring(L, script);
-        if (r != LUA_OK) {
-            const char* error = lua_tostring(L, -1);
-            std::cerr << "Error: " << error << std::endl;
-            EXPECT_EQ(r, LUA_OK);
-            static T t {};
-            return t;
-        }
-        EXPECT_EQ(lua_gettop(L), 1);
-        T t = luabind::value_mirror<T>::from_lua(L, -1);
-        lua_pop(L, -1);
-        return t;
-    }
-
-protected:
-    lua_State* L = nullptr;
 };
 
 class AccountLuaTest : public LuaTest {
@@ -322,7 +281,7 @@ TEST_F(LuaTest, Unbound) {
     luabind::function<&testUnboundByRef>(L, "testUnboundByRef");
     luabind::function<&testUnboundByConstRef>(L, "testUnboundByConstRef");
     luabind::function<&testUnbound>(L, "testUnbound");
-    int r = run(R"--(
+    [[maybe_unused]] int r = run(R"--(
         u = create()
         testUnboundByRef(u)
         testUnbound(u)

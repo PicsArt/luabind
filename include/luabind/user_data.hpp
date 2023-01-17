@@ -95,13 +95,13 @@ template <typename T>
 struct cpp_user_data : user_data {
     T* data;
 
-    cpp_user_data(T* v)
-        : user_data(v, memory_lifetime::cpp)
+    cpp_user_data(lua_State* L, T* v)
+        : user_data(L, v, memory_lifetime::cpp)
         , data(v) {}
 
     static int to_lua(lua_State* L, T* v) {
         void* p = lua_newuserdatauv(L, sizeof(cpp_user_data), 0);
-        cpp_user_data* ud = new (p) cpp_user_data(v);
+        cpp_user_data* ud = new (p) cpp_user_data(L, v);
         if (ud->info != nullptr) {
             ud->info->get_metatable(L);
         } else {

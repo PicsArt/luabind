@@ -66,7 +66,7 @@ template <typename T>
 struct valid_lua_arg
     : std::bool_constant<!is_pointer_ref_v<T> &&
                          ((std::is_fundamental_v<T> && !std::is_pointer_v<T> && !std::is_reference_v<T>) ||
-                          std::is_class_v<T>)> {};
+                           std::is_class_v<std::remove_cvref_t<T>> || std::is_class_v<std::remove_pointer<T>>)> {};
 
 } // namespace luabind
 

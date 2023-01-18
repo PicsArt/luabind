@@ -64,7 +64,7 @@ struct value_mirror<T*> {
 template <typename T>
 struct value_mirror<T&> {
     static int to_lua(lua_State* L, T& v) {
-        value_mirror<T*>::to_lua(L, &v);
+        return value_mirror<T*>::to_lua(L, &v);
     }
 
     static T& from_lua(lua_State* L, int idx) {
@@ -199,6 +199,12 @@ struct value_mirror<std::string> {
         return std::string(value_mirror<std::string_view>::from_lua(L, idx));
     }
 };
+
+template <>
+struct value_mirror<const std::string&> : value_mirror<std::string> {};
+
+template <>
+struct value_mirror<const std::string*> {};
 
 template <typename T, typename Y>
 struct value_mirror<std::pair<T, Y>> {

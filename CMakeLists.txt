@@ -4,7 +4,7 @@ project(luabind)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # variable to use custom library
 set(LUA_LIB_NAME luabind_lua CACHE STRING "lua library name")

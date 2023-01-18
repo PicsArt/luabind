@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 # variable to use custom library
 set(LUA_LIB_NAME luabind_lua CACHE STRING "lua library name")
-message("luabind uses [ ${LUA_LIB_NAME} ] as lua library")
 
 set(INCLUDE_LUA_LIB_WITH_EXTERN_C ON CACHE BOOL "flag to determine whether lua library is included with extern 'C'")
 if(INCLUDE_LUA_LIB_WITH_EXTERN_C)
@@ -22,7 +21,7 @@ add_subdirectory(third_party)
 
 add_library(luabind INTERFACE)
 target_include_directories(luabind INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(luabind INTERFACE ${LUA_LIB_NAME}_headers)
+target_link_libraries(luabind INTERFACE ${LUA_LIB_NAME})
 
 if(LUABIND_TEST)
     enable_testing()

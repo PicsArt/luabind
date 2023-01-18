@@ -47,18 +47,18 @@ luaL_dostring(L, R"--(
 ```
 ## How to install, confugure, build and run
 
-Ordinary prcedure when using `luabind` as standalone library.
+Ordinary prcedure when developing and testing `luabind` library.
 
 ```sh
 git clone https://github.com/PicsArt/luabind.git
 
 git submodule update --recursive --init
 
-cmake -B build -S .
+cmake --preset luabind
 
-cmake --build ./build
+cmake --build --preset luabind
 
-ctest --test-dir build
+ctest --preset unit_tests
 ```
 
 There are some specifications when you want to use `luabind` as submodule. As a library it consist of submodules such as: `lua` and `googletest`. You can encounter to issues like `'multiple definition of googletest'` etc.. To avoid this conflicts on CMake level variables are defined to prevent such problems. 
@@ -74,19 +74,19 @@ There are some specifications when you want to use `luabind` as submodule. As a 
 
 - To use custom `lua` library one can run with the following command.
 ```sh
-cmake -B build -S . -DLUA_LIB_NAME=[your-custom-lua-library]
+cmake --preset luabind -DLUA_LIB_NAME=[your-custom-lua-library]
 ```
 > Note: `-DLUA_LIB_NAME=luabind_lua` is set by default.
 
 - To exclude `luabind` tests and `googletest` library from build phase run the following command.
 ```sh
-cmake -B build -S . -DLUABIND_TEST=OFF
+cmake --preset luabind -DLUABIND_TEST=OFF
 ```
 > Note: `-DLUABIND_TEST=ON` is set by default.
 
 - To wrap/unwrap lua includes with `extern "C"` use the variable to do so.
 ```sh
-cmake -B build -S . -DINCLUDE_LUA_LIB_WITH_EXTERN_C=OFF
+cmake --preset luabind -DINCLUDE_LUA_LIB_WITH_EXTERN_C=OFF
 ```
 > Note: `-DINCLUDE_LUA_LIB_WITH_EXTERN_C=ON` is set by default.
 

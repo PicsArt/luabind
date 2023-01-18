@@ -14,7 +14,10 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "INCLUDE_LUA_LIB_WITH_EXTERN_C": "ON",
+        "LUABIND_TEST": "ON",
+        "LUA_LIB_NAME": "luabind_lua"
       }
     }
   ],
@@ -27,16 +30,16 @@
   ],
   "testPresets": [
     {
-        "name": "unit_tests",
-        "displayName": "Unit Tests",
-        "configurePreset": "luabind",
-        "output": {
-            "outputOnFailure": true
-        },
-        "execution": {
-            "noTestsAction": "error",
-            "stopOnFailure": false
-        }
+      "name": "unit_tests",
+      "displayName": "Unit Tests",
+      "configurePreset": "luabind",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
     }
   ]
 }

@@ -25,7 +25,7 @@ protected:
 
     template <typename T>
     user_data(lua_State* L, T* object, memory_lifetime lifetime)
-        : user_data(object, type_storage::find_type_info(L, object), lifetime) {}
+        : user_data(object, type_storage::find_type_info<T>(L), lifetime) {}
 
 public:
     virtual ~user_data() {
@@ -112,14 +112,14 @@ struct cpp_user_data : user_data {
     }
 };
 
+template <typename T>
 struct shared_user_data : user_data {
-    std::shared_ptr<Object> data;
+    std::shared_ptr<T> data;
 
-    shared_user_data(lua_State* L, std::shared_ptr<Object> v)
+    shared_user_data(lua_State* L, std::shared_ptr<T> v)
         : user_data(L, v.get(), memory_lifetime::shared)
         , data(std::move(v)) {}
 
-    template <typename T>
     static int to_lua(lua_State* L, std::shared_ptr<T> v) {
         void* p = lua_newuserdatauv(L, sizeof(shared_user_data), 0);
         shared_user_data* ud = new (p) shared_user_data(L, std::move(v));

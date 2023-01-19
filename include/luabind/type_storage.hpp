@@ -118,15 +118,6 @@ public:
     }
 
     template <typename T>
-    static type_info* find_type_info(lua_State* L, const T* obj) {
-        type_info* info = find_type_info(L, std::type_index(typeid(*obj)));
-        if (info == nullptr) {
-            info = find_type_info<T>(L);
-        }
-        return info;
-    }
-
-    template <typename T>
     static type_info* find_type_info(lua_State* L) {
         return find_type_info(L, std::type_index(typeid(T)));
     }

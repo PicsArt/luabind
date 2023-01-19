@@ -54,7 +54,7 @@ struct shared_ctor_wrapper {
             if (num_args != sizeof...(Args) + 1) {
                 throw luabind::error("Invalid number of arguments");
             }
-            return shared_user_data::to_lua(L, std::make_shared<Type>(value_mirror<Args>::from_lua(L, Indices)...));
+            return shared_user_data<Type>::to_lua(L, std::make_shared<Type>(value_mirror<Args>::from_lua(L, Indices)...));
         } catch (const luabind::error& e) {
             lua_pushstring(L, e.what());
         } catch (...) {

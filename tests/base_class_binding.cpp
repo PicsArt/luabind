@@ -31,7 +31,15 @@ public:
     std::string_view type() const override {
         return "Derived3";
     }
+
+    std::string_view childFunction() {
+        return "FromDerived3";
+    }
 };
+
+std::string_view usage(std::shared_ptr<Base> ptr) {
+    return ptr->type();
+}
 
 std::shared_ptr<Base> create(std::string_view name) {
     if (name == "Derived1") {
@@ -48,8 +56,12 @@ std::shared_ptr<Base> create(std::string_view name) {
 class BaseClassBindingTest : public LuaTest {
 protected:
     void SetUp() override {
-        luabind::class_<Base>(L, "StringBox").function<&Base::type>("type");
+        luabind::class_<Base>(L, "Base").function<&Base::type>("type");
+        luabind::class_<Derived3, Base>(L, "Derived3")
+            .construct_shared<>("makeShared")
+            .function<&Derived3::childFunction>("childFunction");
         luabind::function<&create>(L, "create");
+        luabind::function<&usage>(L, "usage");
 
         EXPECT_EQ(lua_gettop(L), 0);
     }
@@ -58,13 +70,21 @@ protected:
 TEST_F(BaseClassBindingTest, BaseClassBindingTest) {
     int r = run(R"--(
         d1 = create("Derived1")
-        print(d1:type())
+        assert(d1:type() == "Derived1")
 
         d2 = create("Derived2")
-        print(d2:type())
+        assert(d2:type() == "Derived2")
 
         d3 = create("Derived3")
-        print(d3:type())
+        assert(d3:type() == "Derived3")
+        assert(d3:childFunction() == "FromDerived3")
+
+        d3_concrete = Derived3:makeShared()
+        assert(d3_concrete:type() == "Derived3")
+        assert(d3_concrete:childFunction() == "FromDerived3")
+
+        assert(usage(d3_concrete) == "Derived3")
+        assert(usage(d1) == "Derived1")
         
     )--");
 

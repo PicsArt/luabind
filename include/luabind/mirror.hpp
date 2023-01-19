@@ -77,16 +77,20 @@ struct value_mirror<std::shared_ptr<T>> {
     using type = std::shared_ptr<T>;
 
     static int to_lua(lua_State* L, type v) {
-        return shared_user_data<T>::to_lua(L, std::move(v));
+        return shared_user_data::to_lua<T>(L, std::move(v));
     }
 
     static type from_lua(lua_State* L, int idx) {
         auto ud = user_data::from_lua(L, idx);
-        auto sud = dynamic_cast<shared_user_data<T>*>(ud);
+        auto sud = dynamic_cast<shared_user_data*>(ud);
         if (sud == nullptr) {
             throw error("Can't get shared_ptr from user data");
         }
-        return sud->data;
+        auto r = std::dynamic_pointer_cast<T>(sud->data);
+        if (!r) {
+            throw error("Invalid type");
+        }
+        return r;
         // return sud ? std::dynamic_pointer_cast<T>(sud->data) : cpp_type {};
     }
 };

@@ -77,7 +77,7 @@ struct value_mirror<std::shared_ptr<T>> {
     using type = std::shared_ptr<T>;
 
     static int to_lua(lua_State* L, type v) {
-        return shared_user_data::to_lua<T>(L, std::move(v));
+        return shared_user_data::to_lua(L, std::move(v));
     }
 
     static type from_lua(lua_State* L, int idx) {

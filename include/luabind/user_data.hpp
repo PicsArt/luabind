@@ -115,7 +115,8 @@ struct cpp_user_data : user_data {
 struct shared_user_data : user_data {
     std::shared_ptr<Object> data;
 
-    shared_user_data(lua_State* L, std::shared_ptr<Object> v)
+    template <typename T>
+    shared_user_data(lua_State* L, std::shared_ptr<T> v)
         : user_data(L, v.get(), memory_lifetime::shared)
         , data(std::move(v)) {}
 

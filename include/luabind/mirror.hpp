@@ -168,6 +168,11 @@ template <>
 struct value_mirror<unsigned long> : number_mirror<unsigned long> {};
 
 template <>
+struct value_mirror<long long> : number_mirror<long long> {};
+template <>
+struct value_mirror<unsigned long long> : number_mirror<unsigned long long> {};
+
+template <>
 struct value_mirror<float> : number_mirror<float> {};
 template <>
 struct value_mirror<double> : number_mirror<double> {};

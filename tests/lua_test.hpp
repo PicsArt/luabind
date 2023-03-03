@@ -1,5 +1,8 @@
 #pragma once
 
+#include <gtest/gtest.h>
+#include <luabind/bind.hpp>
+
 class LuaTest : public testing::Test {
 protected:
     LuaTest() {

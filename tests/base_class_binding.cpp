@@ -1,11 +1,7 @@
+#include "lua_test.hpp"
+
 #include <memory>
 #include <string_view>
-
-#include <luabind/bind.hpp>
-
-#include <gtest/gtest.h>
-
-#include "lua_test.hpp"
 
 class Base : public luabind::Object {
 public:

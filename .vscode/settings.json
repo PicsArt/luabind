@@ -1,6 +1,6 @@
 {
     "files.insertFinalNewline": true,
-    "editor.renderFinalNewline": false,
+    "editor.renderFinalNewline": "off",
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "editor.formatOnPaste": true,

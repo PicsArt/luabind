@@ -1,12 +1,8 @@
+#include "lua_test.hpp"
+
 #include <iostream>
 #include <memory>
 #include <string>
-
-#include <luabind/bind.hpp>
-
-#include <gtest/gtest.h>
-
-#include "lua_test.hpp"
 
 class Account : public luabind::Object {
 public:

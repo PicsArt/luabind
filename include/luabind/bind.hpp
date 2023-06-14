@@ -78,6 +78,11 @@ public:
         return *this;
     }
 
+    class_& function(const char* name, lua_CFunction luaFunction) {
+        _info->functions[name] = luaFunction;
+        return *this;
+    }
+
     // template <auto read_func, auto len_func, auto write_func = read_func>
     // class_& index() {
     //     _info->subscript_read = &function_wrapper<decltype(read_func), read_func>::invoke;
@@ -148,6 +153,15 @@ private:
                 return r;
             }
         }
+
+        // Check if there is a function in metatable with the specified key
+        info->get_metatable(L);
+        lua_pushvalue(L, 2);
+        lua_rawget(L, -2);
+        if (!lua_isnil(L, -1)) {
+            return 1;
+        }
+
         return 0;
     }
 
@@ -191,6 +205,11 @@ template <auto func>
 void function(lua_State* L, const char* name) {
     lua_CFunction cwrapper = &function_wrapper<decltype(func), func>::invoke;
     lua_pushcfunction(L, cwrapper);
+    lua_setglobal(L, name);
+}
+
+inline void function(lua_State* L, const char* name, lua_CFunction luaFunction) {
+    lua_pushcfunction(L, luaFunction);
     lua_setglobal(L, name);
 }
 

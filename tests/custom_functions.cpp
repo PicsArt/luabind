@@ -10,15 +10,15 @@ public:
     }
 
 public:
-    static int toLuaTable(lua_State* state) {
-        int argumentCount = lua_gettop(state);
+    static int toLuaTable(lua_State* L) {
+        int argumentCount = lua_gettop(L);
         EXPECT_EQ(argumentCount, 1);
 
-        const auto& data = luabind::value_mirror<IntWrapper>::from_lua(state, 1);
-        lua_newtable(state);
-        lua_pushstring(state, "value");
-        lua_pushinteger(state, data.get());
-        lua_settable(state, -3);
+        const auto& data = luabind::value_mirror<IntWrapper>::from_lua(L, 1);
+        lua_newtable(L);
+        lua_pushstring(L, "value");
+        lua_pushinteger(L, data.get());
+        lua_settable(L, -3);
 
         return 1;
     }

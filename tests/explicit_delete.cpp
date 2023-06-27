@@ -26,6 +26,9 @@ TEST_F(ExplicitDeleteTest, ExplicitDelete) {
     run(R"--(
         obj = Deletable:new()
         obj:delete()
+        obj:delete()
+        obj = null
+        collectgarbage()
     )--");
 
     EXPECT_EQ(Deletable::deletedCount, 1);
@@ -33,6 +36,9 @@ TEST_F(ExplicitDeleteTest, ExplicitDelete) {
     run(R"--(
         obj = Deletable:makeShared()
         obj:delete()
+        obj:delete()
+        obj = null
+        collectgarbage()
     )--");
 
     EXPECT_EQ(Deletable::deletedCount, 2);

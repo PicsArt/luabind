@@ -40,6 +40,13 @@ public:
     }
 
 public:
+    static void* new_userdata(lua_State* L, size_t size) {
+        void* ud = lua_newuserdatauv(L, size, 1);
+        lua_newtable(L);
+        lua_setiuservalue(L, -2, 1);
+        return ud;
+    }
+
     static void get_destructing_metatable(lua_State* L) {
         lua_newtable(L);
         int table_idx = lua_gettop(L);
@@ -48,17 +55,16 @@ public:
 
     static void add_destructing_functions(lua_State* L, int table_idx) {
         lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, [](lua_State* L) -> int {
-            auto ud = from_lua(L, -1);
-            if (ud->object != nullptr) {
-                ud->~user_data();
-            }
-            return 0;
-        });
-        lua_pushliteral(L, "delete");
-        lua_pushvalue(L, -2);
+        lua_pushcfunction(L, &user_data::destruct);
         lua_rawset(L, table_idx);
-        lua_rawset(L, table_idx);
+    }
+
+    static int destruct(lua_State* L) {
+        user_data* ud = from_lua(L, -1);
+        if (ud->object != nullptr) {
+            ud->~user_data();
+        }
+        return 0;
     }
 };
 
@@ -79,7 +85,7 @@ public:
     template <typename... Args>
     static int to_lua(lua_State* L, Args&&... args) {
         static_assert(std::is_constructible_v<T, Args...>);
-        void* p = lua_newuserdatauv(L, sizeof(lua_user_data), 0);
+        void* p = new_userdata(L, sizeof(lua_user_data));
         lua_user_data* ud = new (p) lua_user_data(L, std::forward<Args>(args)...);
         if (ud->info != nullptr) {
             ud->info->get_metatable(L);
@@ -100,7 +106,7 @@ struct cpp_user_data : user_data {
         , data(v) {}
 
     static int to_lua(lua_State* L, T* v) {
-        void* p = lua_newuserdatauv(L, sizeof(cpp_user_data), 0);
+        void* p = new_userdata(L, sizeof(cpp_user_data));
         cpp_user_data* ud = new (p) cpp_user_data(L, v);
         if (ud->info != nullptr) {
             ud->info->get_metatable(L);
@@ -122,7 +128,7 @@ struct shared_user_data : user_data {
 
     template <typename T>
     static int to_lua(lua_State* L, std::shared_ptr<T> v) {
-        void* p = lua_newuserdatauv(L, sizeof(shared_user_data), 0);
+        void* p = new_userdata(L, sizeof(shared_user_data));
         shared_user_data* ud = new (p) shared_user_data(L, std::move(v));
         if (ud->info != nullptr) {
             ud->info->get_metatable(L);

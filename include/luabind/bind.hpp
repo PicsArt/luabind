@@ -25,25 +25,26 @@ public:
         : _L(L) {
         _info = type_storage::add_type_info<Type, Bases...>(L, name, index_impl, new_index_impl);
         _info->get_metatable(L);
-        int table_idx = lua_gettop(L);
+        int mt_idx = lua_gettop(L);
 
         if constexpr (std::is_default_constructible_v<Type>) {
             lua_pushliteral(L, "new");
             lua_CFunction default_ctor = &ctor_wrapper<Type>::invoke;
             lua_pushcfunction(L, default_ctor);
-            lua_rawset(L, -3);
+            lua_rawset(L, mt_idx);
         }
 
         // one __index to rule them all and in lua bind them
         lua_pushliteral(L, "__index");
         lua_pushcfunction(L, &index_);
-        lua_rawset(L, -3);
+        lua_rawset(L, mt_idx);
 
         lua_pushliteral(L, "__newindex");
         lua_pushcfunction(L, &new_index);
-        lua_rawset(L, -3);
+        lua_rawset(L, mt_idx);
 
-        user_data::add_destructing_functions(L, table_idx);
+        user_data::add_destructing_functions(L, mt_idx);
+        // TODO also add delete function for manual memory management.
         lua_pop(L, 1); // pop metatable
     }
 
@@ -111,11 +112,12 @@ public:
 private:
     static int index_(lua_State* L) {
         int r = index_impl(L);
-        if (r == 0) {
-            const char* key = lua_tostring(L, 2);
-            luaL_error(L, "object does not have function or property named: %s", key);
-        }
-        return r;
+        if (r != 0) return r;
+        // if there is no result in C++ look in the lua table bound to this object
+        lua_getiuservalue(L, 1, 1);
+        lua_pushvalue(L, 2);
+        lua_rawget(L, -2);
+        return 1;
     }
 
     static int index_impl(lua_State* L) {
@@ -153,10 +155,12 @@ private:
 
     static int new_index(lua_State* L) {
         int r = new_index_impl(L);
-        if (r == 0) {
-            const char* key = lua_tostring(L, 2);
-            luaL_error(L, "object does not have function or property named: %s", key);
-        }
+        if (r != 0) return r;
+        // if there is no result in C++ add new value to the lua table bound to this object
+        lua_getiuservalue(L, 1, 1);
+        lua_pushvalue(L, 2);
+        lua_pushvalue(L, 3);
+        lua_rawset(L, -3);
         return 0;
     }
 

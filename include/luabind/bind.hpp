@@ -44,7 +44,7 @@ public:
         lua_rawset(L, mt_idx);
 
         user_data::add_destructing_functions(L, mt_idx);
-        // TODO also add delete function for manual memory management.
+        function("delete", user_data::destruct);
         lua_pop(L, 1); // pop metatable
     }
 
@@ -106,10 +106,20 @@ public:
         return *this;
     }
 
+    class_& property_readonly(const char* name, lua_CFunction getter_function) {
+        _info->properties.emplace(name, property_data(getter_function, nullptr));
+        return *this;
+    }
+
     template <auto prop>
     class_& property(const char* name) {
         lua_CFunction getter_function = &property_wrapper<get, decltype(prop), prop>::invoke;
         lua_CFunction setter_function = &property_wrapper<set, decltype(prop), prop>::invoke;
+        _info->properties.emplace(name, property_data(getter_function, setter_function));
+        return *this;
+    }
+
+    class_& property(const char* name, lua_CFunction getter_function, lua_CFunction setter_function) {
         _info->properties.emplace(name, property_data(getter_function, setter_function));
         return *this;
     }
@@ -154,14 +164,6 @@ private:
             if (r != 0) {
                 return r;
             }
-        }
-
-        // Check if there is a function in metatable with the specified key
-        info->get_metatable(L);
-        lua_pushvalue(L, 2);
-        lua_rawget(L, -2);
-        if (!lua_isnil(L, -1)) {
-            return 1;
         }
 
         return 0;

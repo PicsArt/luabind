@@ -14,6 +14,10 @@ public:
         int argumentCount = lua_gettop(L);
         EXPECT_EQ(argumentCount, 1);
 
+        return luaTable(L);
+    }
+
+    static int luaTable(lua_State* L) {
         const auto& data = luabind::value_mirror<IntWrapper>::from_lua(L, 1);
         lua_newtable(L);
         lua_pushstring(L, "value");
@@ -32,7 +36,8 @@ protected:
     void SetUp() override {
         luabind::class_<IntWrapper>(L, "IntWrapper")
             .constructor<int>("new")
-            .function("toTable", IntWrapper::toLuaTable);
+            .function("toTable", IntWrapper::toLuaTable)
+            .property_readonly("table", IntWrapper::luaTable);
 
         EXPECT_EQ(lua_gettop(L), 0);
     }
@@ -40,10 +45,14 @@ protected:
 
 TEST_F(CustomFunctionTest, CustomFunction) {
     auto value = runWithResult<int>(R"--(
-        obj = IntWrapper:new(13)
-        objTable = obj:toTable()
-        return objTable["value"]
+        obj1 = IntWrapper:new(13)
+        obj1Table = obj1:toTable()
+
+        obj2 = IntWrapper:new(14)
+        obj2Table = obj2.table
+
+        return obj1Table["value"] + obj2Table["value"]
     )--");
 
-    EXPECT_EQ(value, 13);
+    EXPECT_EQ(value, 27);
 }

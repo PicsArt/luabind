@@ -172,8 +172,9 @@ TEST_F(AccountLuaTest, FunctionsAndProperties) {
         a:setBalance(2)
         assert(a.balance == 2)
         assert(a:getBalance() == 2)
-        local status, err = pcall(function() print(a.limit) end)
-        assert(not status)
+        assert(a.limit == nil)
+        a.limit = 13
+        assert(a.limit == 13)
         setAccount(a)
 
         sa = SpecialAccount:makeShared()
@@ -190,7 +191,7 @@ TEST_F(AccountLuaTest, FunctionsAndProperties) {
         sa:setLimit(5)
         setSpecialAccount(sa)
     )--");
-    EXPECT_EQ(r, LUA_OK);
+    ASSERT_EQ(r, LUA_OK);
     EXPECT_EQ(account->balance, 2);
     EXPECT_EQ(special_account->balance, 2);
     EXPECT_EQ(special_account->limit, 5);

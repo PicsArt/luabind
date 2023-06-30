@@ -44,7 +44,7 @@ public:
         lua_rawset(L, mt_idx);
 
         user_data::add_destructing_functions(L, mt_idx);
-        // TODO also add delete function for manual memory management.
+        function("delete", user_data::destruct);
         lua_pop(L, 1); // pop metatable
     }
 
@@ -79,6 +79,11 @@ public:
         return *this;
     }
 
+    class_& function(const char* name, lua_CFunction luaFunction) {
+        _info->functions[name] = luaFunction;
+        return *this;
+    }
+
     // template <auto read_func, auto len_func, auto write_func = read_func>
     // class_& index() {
     //     _info->subscript_read = &function_wrapper<decltype(read_func), read_func>::invoke;
@@ -101,10 +106,20 @@ public:
         return *this;
     }
 
+    class_& property_readonly(const char* name, lua_CFunction getter_function) {
+        _info->properties.emplace(name, property_data(getter_function, nullptr));
+        return *this;
+    }
+
     template <auto prop>
     class_& property(const char* name) {
         lua_CFunction getter_function = &property_wrapper<get, decltype(prop), prop>::invoke;
         lua_CFunction setter_function = &property_wrapper<set, decltype(prop), prop>::invoke;
+        _info->properties.emplace(name, property_data(getter_function, setter_function));
+        return *this;
+    }
+
+    class_& property(const char* name, lua_CFunction getter_function, lua_CFunction setter_function) {
         _info->properties.emplace(name, property_data(getter_function, setter_function));
         return *this;
     }
@@ -150,6 +165,7 @@ private:
                 return r;
             }
         }
+
         return 0;
     }
 
@@ -195,6 +211,11 @@ template <auto func>
 void function(lua_State* L, const char* name) {
     lua_CFunction cwrapper = &function_wrapper<decltype(func), func>::invoke;
     lua_pushcfunction(L, cwrapper);
+    lua_setglobal(L, name);
+}
+
+inline void function(lua_State* L, const char* name, lua_CFunction luaFunction) {
+    lua_pushcfunction(L, luaFunction);
     lua_setglobal(L, name);
 }
 

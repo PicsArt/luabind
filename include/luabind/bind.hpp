@@ -84,6 +84,26 @@ public:
         return *this;
     }
 
+    template <auto func>
+    class_& static_function(const char* name) {
+        _info->get_metatable(_L);
+        lua_pushstring(_L, name);
+        lua_CFunction cwrapper = &static_function_wrapper<decltype(func), func>::invoke;
+        lua_pushcfunction(_L, cwrapper);
+        lua_rawset(_L, -3);
+        lua_pop(_L, 1); // pop metatable
+        return *this;
+    }
+
+    class_& static_function(const char* name, lua_CFunction luaFunction) {
+        _info->get_metatable(_L);
+        lua_pushstring(_L, name);
+        lua_pushcfunction(_L, luaFunction);
+        lua_rawset(_L, -3);
+        lua_pop(_L, 1); // pop metatable
+        return *this;
+    }
+
     // template <auto read_func, auto len_func, auto write_func = read_func>
     // class_& index() {
     //     _info->subscript_read = &function_wrapper<decltype(read_func), read_func>::invoke;

@@ -144,6 +144,17 @@ public:
         return *this;
     }
 
+    class_& index_by_number(lua_CFunction getter_function) {
+        _info->index_by_number = getter_function;
+        return *this;
+    }
+
+    class_& index_by_number(lua_CFunction getter_function, lua_CFunction setter_function) {
+        _info->index_by_number = getter_function;
+        _info->newindex_by_number = setter_function;
+        return *this;
+    }
+
 private:
     static int index_(lua_State* L) {
         int r = index_impl(L);
@@ -167,15 +178,21 @@ private:
         //     lua_pushinteger(L, i - 1);
         //     return info->subscript_read(L);
         // }
-        const char* key = lua_tostring(L, 2);
-        auto p_it = info->properties.find(std::string_view(key));
-        if (p_it != info->properties.end()) {
-            return p_it->second.getter(L);
+        if (lua_type(L, 2) == LUA_TNUMBER && info->index_by_number) {
+            return info->index_by_number(L);
         }
-        auto f_it = info->functions.find(std::string_view(key));
-        if (f_it != info->functions.end()) {
-            lua_pushcfunction(L, f_it->second);
-            return 1;
+
+        if (lua_type(L, 2) == LUA_TSTRING) {
+            const char* key = lua_tostring(L, 2);
+            auto p_it = info->properties.find(std::string_view(key));
+            if (p_it != info->properties.end()) {
+                return p_it->second.getter(L);
+            }
+            auto f_it = info->functions.find(std::string_view(key));
+            if (f_it != info->functions.end()) {
+                lua_pushcfunction(L, f_it->second);
+                return 1;
+            }
         }
         // lua doesn't do recursive index lookup through metatables
         // if __index is bound to a C function, so we do it ourselves.
@@ -203,16 +220,23 @@ private:
     static int new_index_impl(lua_State* L) {
         type_info* info = type_storage::find_type_info<Type>(L);
         // TODO use lua_rotate to fix integral index i-=1;
-        const char* key = lua_tostring(L, 2);
-        auto p_it = info->properties.find(std::string_view(key));
-        if (p_it != info->properties.end()) {
-            if (p_it->second.setter) {
-                p_it->second.setter(L);
-                return 1;
-            } else {
-                luaL_error(L, "property named '%s' is read only", key);
+
+        if (lua_type(L, 2) == LUA_TNUMBER && info->newindex_by_number) {
+            return info->newindex_by_number(L);
+        }
+
+        if (lua_type(L, 2) == LUA_TSTRING) {
+            const char* key = lua_tostring(L, 2);
+            auto p_it = info->properties.find(std::string_view(key));
+            if (p_it != info->properties.end()) {
+                if (p_it->second.setter) {
+                    return p_it->second.setter(L);
+                } else {
+                    luaL_error(L, "property named '%s' is read only", key);
+                }
             }
         }
+
         for (type_info* base : info->bases) {
             int r = base->new_index(L);
             if (r != 0) {

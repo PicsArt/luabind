@@ -36,6 +36,8 @@ struct type_info {
     lua_CFunction new_index;
     lua_CFunction subscript_read;
     lua_CFunction subscript_write;
+    lua_CFunction index_by_number;
+    lua_CFunction newindex_by_number;
     std::map<std::string, lua_CFunction, std::less<>> functions;
     std::map<std::string, property_data, std::less<>> properties;
     int metatable;
@@ -54,7 +56,9 @@ struct type_info {
         , index(index_functor)
         , new_index(new_index_functor)
         , subscript_read(nullptr)
-        , subscript_write(nullptr) {
+        , subscript_write(nullptr)
+        , index_by_number(nullptr)
+        , newindex_by_number(nullptr) {
         lua_newtable(L);
         lua_pushvalue(L, -1);
         metatable = luaL_ref(L, LUA_REGISTRYINDEX);

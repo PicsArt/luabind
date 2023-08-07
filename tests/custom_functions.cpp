@@ -9,6 +9,10 @@ public:
         return _value;
     }
 
+    static IntWrapper create(int value) {
+        return IntWrapper(value);
+    }
+
 public:
     static int toLuaTable(lua_State* L) {
         int argumentCount = lua_gettop(L);
@@ -36,6 +40,7 @@ protected:
     void SetUp() override {
         luabind::class_<IntWrapper>(L, "IntWrapper")
             .constructor<int>("new")
+            .class_function<IntWrapper::create>("create")
             .function("toTable", IntWrapper::toLuaTable)
             .property_readonly("table", IntWrapper::luaTable);
 
@@ -48,11 +53,35 @@ TEST_F(CustomFunctionTest, CustomFunction) {
         obj1 = IntWrapper:new(13)
         obj1Table = obj1:toTable()
 
-        obj2 = IntWrapper:new(14)
+        obj2 = IntWrapper:create(14)
         obj2Table = obj2.table
 
         return obj1Table["value"] + obj2Table["value"]
     )--");
 
     EXPECT_EQ(value, 27);
+}
+
+TEST_F(CustomFunctionTest, ObjCustomTable) {
+    run(R"--(
+        obj = IntWrapper:new(13)
+        obj.customProperty = 40
+        return obj
+    )--");
+
+    luabind::user_data::get_custom_table(L, -1);
+    lua_getfield(L, -1, "customProperty");
+    auto value = lua_tointeger(L, -1);
+    EXPECT_EQ(value, 40);
+    lua_pop(L, 2);
+    
+    lua_newtable(L);
+    lua_pushinteger(L, 34);
+    lua_setfield(L, -2, "otherCustomProperty");
+    luabind::user_data::set_custom_table(L, -2);
+
+    lua_getfield(L, -1, "otherCustomProperty");
+    value = lua_tointeger(L, -1);
+    EXPECT_EQ(value, 34);
+    lua_pop(L, 1);
 }

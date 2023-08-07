@@ -85,17 +85,17 @@ public:
     }
 
     template <auto func>
-    class_& static_function(const char* name) {
+    class_& class_function(const char* name) {
         _info->get_metatable(_L);
         lua_pushstring(_L, name);
-        lua_CFunction cwrapper = &static_function_wrapper<decltype(func), func>::invoke;
+        lua_CFunction cwrapper = &class_function_wrapper<decltype(func), func>::invoke;
         lua_pushcfunction(_L, cwrapper);
         lua_rawset(_L, -3);
         lua_pop(_L, 1); // pop metatable
         return *this;
     }
 
-    class_& static_function(const char* name, lua_CFunction luaFunction) {
+    class_& class_function(const char* name, lua_CFunction luaFunction) {
         _info->get_metatable(_L);
         lua_pushstring(_L, name);
         lua_pushcfunction(_L, luaFunction);
@@ -183,12 +183,12 @@ private:
         }
 
         if (lua_type(L, 2) == LUA_TSTRING) {
-            const char* key = lua_tostring(L, 2);
-            auto p_it = info->properties.find(std::string_view(key));
+            auto key = value_mirror<std::string_view>::from_lua(L, 2);
+            auto p_it = info->properties.find(key);
             if (p_it != info->properties.end()) {
                 return p_it->second.getter(L);
             }
-            auto f_it = info->functions.find(std::string_view(key));
+            auto f_it = info->functions.find(key);
             if (f_it != info->functions.end()) {
                 lua_pushcfunction(L, f_it->second);
                 return 1;
@@ -226,8 +226,8 @@ private:
         }
 
         if (lua_type(L, 2) == LUA_TSTRING) {
-            const char* key = lua_tostring(L, 2);
-            auto p_it = info->properties.find(std::string_view(key));
+            auto key = value_mirror<std::string_view>::from_lua(L, 2);
+            auto p_it = info->properties.find(key);
             if (p_it != info->properties.end()) {
                 if (p_it->second.setter) {
                     return p_it->second.setter(L);

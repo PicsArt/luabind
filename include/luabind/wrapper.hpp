@@ -163,10 +163,10 @@ struct function_wrapper<R (*)(Args...), func> {
 };
 
 template <typename F, F f>
-struct static_function_wrapper;
+struct class_function_wrapper;
 
 template <typename R, typename... Args, R (*func)(Args...)>
-struct static_function_wrapper<R (*)(Args...), func> {
+struct class_function_wrapper<R (*)(Args...), func> {
     static_assert(std::conjunction_v<valid_lua_arg<R>, valid_lua_arg<Args>...>);
 
     static int invoke(lua_State* L) {

@@ -86,13 +86,8 @@ public:
 
     template <auto func>
     class_& class_function(const char* name) {
-        _info->get_metatable(_L);
-        lua_pushstring(_L, name);
         lua_CFunction cwrapper = &class_function_wrapper<decltype(func), func>::invoke;
-        lua_pushcfunction(_L, cwrapper);
-        lua_rawset(_L, -3);
-        lua_pop(_L, 1); // pop metatable
-        return *this;
+        return class_function(name, cwrapper);
     }
 
     class_& class_function(const char* name, lua_CFunction luaFunction) {
@@ -103,21 +98,6 @@ public:
         lua_pop(_L, 1); // pop metatable
         return *this;
     }
-
-    // template <auto read_func, auto len_func, auto write_func = read_func>
-    // class_& index() {
-    //     _info->subscript_read = &function_wrapper<decltype(read_func), read_func>::invoke;
-    //     if constexpr (write_func != read_func) {
-    //         std::cout << "wohoo, writing subscript" << std::endl;
-    //         _info->subscript_write = &function_wrapper<decltype(write_func), write_func>::invoke;
-    //     }
-    //     lua_CFunction len_function = &function_wrapper<decltype(len_func), len_func>::invoke;
-    //     _info->get_metatable(_L);
-    //     lua_pushliteral(_L, "__len");
-    //     lua_pushcfunction(_L, len_function);
-    //     lua_rawset(_L, -3);
-    //     return *this;
-    // }
 
     template <auto prop>
     class_& property_readonly(const char* name) {
@@ -144,14 +124,14 @@ public:
         return *this;
     }
 
-    class_& index_by_number(lua_CFunction getter_function) {
-        _info->index_by_number = getter_function;
+    class_& array_access(lua_CFunction getter_function) {
+        _info->array_access_getter = getter_function;
         return *this;
     }
 
-    class_& index_by_number(lua_CFunction getter_function, lua_CFunction setter_function) {
-        _info->index_by_number = getter_function;
-        _info->newindex_by_number = setter_function;
+    class_& array_access(lua_CFunction getter_function, lua_CFunction setter_function) {
+        _info->array_access_getter = getter_function;
+        _info->array_access_setter = setter_function;
         return *this;
     }
 
@@ -168,21 +148,17 @@ private:
 
     static int index_impl(lua_State* L) {
         type_info* info = type_storage::find_type_info<Type>(L);
-        // if (lua_isinteger(L, 2) == 1) {
-        //     if (info->subscript_read == nullptr) {
-        //         lua_pushstring(L, "Indexing operation is not set");
-        //         lua_error(L);
-        //     }
-        //     auto i = lua_tointeger(L, 2);
-        //     lua_pop(L, 1);
-        //     lua_pushinteger(L, i - 1);
-        //     return info->subscript_read(L);
-        // }
-        if (lua_type(L, 2) == LUA_TNUMBER && info->index_by_number) {
-            return info->index_by_number(L);
+
+        auto key_type = lua_type(L, 2);
+        if (key_type != LUA_TNUMBER && key_type != LUA_TSTRING) {
+            luaL_error(L, "Key type should be number or string, '%s' is provided.", lua_typename(L, key_type));
         }
 
-        if (lua_type(L, 2) == LUA_TSTRING) {
+        if (key_type == LUA_TNUMBER && info->array_access_getter) {
+            return info->array_access_getter(L);
+        }
+
+        if (key_type == LUA_TSTRING) {
             auto key = value_mirror<std::string_view>::from_lua(L, 2);
             auto p_it = info->properties.find(key);
             if (p_it != info->properties.end()) {
@@ -221,11 +197,16 @@ private:
         type_info* info = type_storage::find_type_info<Type>(L);
         // TODO use lua_rotate to fix integral index i-=1;
 
-        if (lua_type(L, 2) == LUA_TNUMBER && info->newindex_by_number) {
-            return info->newindex_by_number(L);
+        auto key_type = lua_type(L, 2);
+        if (key_type != LUA_TNUMBER && key_type != LUA_TSTRING) {
+            luaL_error(L, "Key type should be number or string, '%s' is provided.", lua_typename(L, key_type));
         }
 
-        if (lua_type(L, 2) == LUA_TSTRING) {
+        if (key_type == LUA_TNUMBER && info->array_access_setter) {
+            return info->array_access_setter(L);
+        }
+
+        if (key_type == LUA_TSTRING) {
             auto key = value_mirror<std::string_view>::from_lua(L, 2);
             auto p_it = info->properties.find(key);
             if (p_it != info->properties.end()) {

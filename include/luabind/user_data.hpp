@@ -59,6 +59,14 @@ public:
         lua_rawset(L, table_idx);
     }
 
+    static void get_custom_table(lua_State* L, int idx) {
+        lua_getiuservalue(L, idx, 1);
+    }
+
+    static void set_custom_table(lua_State* L, int idx) {
+        lua_setiuservalue(L, idx, 1);
+    }
+
     static int destruct(lua_State* L) {
         user_data* ud = from_lua(L, -1);
         if (ud->object != nullptr) {

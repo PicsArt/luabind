@@ -162,6 +162,40 @@ struct function_wrapper<R (*)(Args...), func> {
     }
 };
 
+template <typename F, F f>
+struct class_function_wrapper;
+
+template <typename R, typename... Args, R (*func)(Args...)>
+struct class_function_wrapper<R (*)(Args...), func> {
+    static_assert(std::conjunction_v<valid_lua_arg<R>, valid_lua_arg<Args>...>);
+
+    static int invoke(lua_State* L) {
+        return indexed_call_helper(L, index_sequence<2, sizeof...(Args)> {});
+    }
+
+    template <size_t... Indices>
+    static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
+        try {
+            int num_args = lua_gettop(L);
+            if (num_args != sizeof...(Args) + 1) {
+                throw luabind::error("Invalid number of arguments");
+            }
+            if constexpr (std::is_same_v<R, void>) {
+                (*func)(value_mirror<Args>::from_lua(L, Indices)...);
+                return 0;
+            } else {
+                return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
+            }
+        } catch (const luabind::error& e) {
+            lua_pushstring(L, e.what());
+        } catch (...) {
+            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        }
+        lua_error(L); // [[noreturn]]
+        return 0;
+    }
+};
+
 template <typename Tag, typename P, P prop>
 struct property_wrapper;
 

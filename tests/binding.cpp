@@ -46,8 +46,24 @@ public:
         Account::flag = 1;
     }
 
+    const std::string& name() const {
+        return _name;
+    }
+
+    void setName(const std::string& name) {
+        _name = bankName() + "::" + name;
+    }
+
+    const std::string& bankName() const {
+        return _bankName;
+    }
+
 public:
     int balance;
+
+private:
+    std::string _name;
+    const std::string _bankName = "BelovedBank";
 };
 
 int Account::count = 0;
@@ -77,7 +93,9 @@ protected:
             .function<&Account::getBalance>("getBalance")
             .function<&Account::setBalance>("setBalance")
             .function<&Account::service>("service")
-            .property<&Account::balance>("balance");
+            .property<&Account::balance>("balance")
+            .property<&Account::bankName>("bankName")
+            .property<&Account::name, &Account::setName>("name");
 
         luabind::class_<SpecialAccount, Account>(L, "SpecialAccount")
             .construct_shared<>("makeShared")
@@ -195,6 +213,27 @@ TEST_F(AccountLuaTest, FunctionsAndProperties) {
     EXPECT_EQ(account->balance, 2);
     EXPECT_EQ(special_account->balance, 2);
     EXPECT_EQ(special_account->limit, 5);
+}
+
+TEST_F(AccountLuaTest, PropertiesDefinedWithFunctions) {
+    std::string bankName = runWithResult<std::string>(R"--(
+        a = Account:new()
+        return a.bankName
+    )--");
+    EXPECT_EQ(bankName, "BelovedBank");
+
+    std::string name = runWithResult<std::string>(R"--(
+        a = Account:new()
+        a.name = 'Davit'
+        return a.name
+    )--");
+    EXPECT_EQ(name, "BelovedBank::Davit");
+
+    int r = run(R"--(
+        a = Account:new()
+        a.bankName = 'other'
+    )--");
+    EXPECT_NE(r, LUA_OK);
 }
 
 struct Base : luabind::Object {
@@ -353,4 +392,67 @@ TEST_F(AccountLuaTest, SharedPtr) {
     )--");
     EXPECT_EQ(r, LUA_OK);
     EXPECT_EQ(a.use_count(), 1);
+}
+
+class Array : public luabind::Object {
+public:
+    Array(std::vector<int>&& v)
+        : _array(std::move(v)) {}
+
+    int getElement(size_t idx) {
+        return _array[idx - 1];
+    }
+
+    void setElement(size_t idx, int value) {
+        _array[idx - 1] = value;
+    }
+
+    static int ctor(lua_State* L) {
+        std::vector<int> v;
+        const int top = lua_gettop(L);
+        for (int i = 2; i <= top; ++i) {
+            v.push_back(luabind::value_mirror<int>::from_lua(L, i));
+        }
+        return luabind::value_mirror<std::shared_ptr<Array>>::to_lua(L, std::make_shared<Array>(std::move(v)));
+    }
+
+private:
+    std::vector<int> _array;
+};
+
+class ArrayTest : public LuaTest {
+protected:
+    void SetUp() override {
+        // clang-format off
+        luabind::class_<Array>(L, "Array")
+            .constructor("new", &Array::ctor)
+            .array_access<&Array::getElement, &Array::setElement>();
+
+        // clang-format on
+        EXPECT_EQ(lua_gettop(L), 0);
+    }
+
+    void TearDown() override {}
+};
+
+TEST_F(ArrayTest, ArrayAccess) {
+    int r = run(R"--(
+        a = Array:new(1, 2, 3, 4, 5);
+        assert(a[1] == 1)
+        assert(a[2] == 2)
+        assert(a[3] == 3)
+        assert(a[4] == 4)
+        assert(a[5] == 5)
+        a[1] = 6
+        a[2] = 7
+        a[3] = 8
+        a[4] = 9
+        a[5] = 10
+        assert(a[1] == 6)
+        assert(a[2] == 7)
+        assert(a[3] == 8)
+        assert(a[4] == 9)
+        assert(a[5] == 10)
+    )--");
+    EXPECT_EQ(r, LUA_OK);
 }

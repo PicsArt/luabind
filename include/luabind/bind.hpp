@@ -29,18 +29,18 @@ public:
 
         if constexpr (std::is_default_constructible_v<Type>) {
             lua_pushliteral(L, "new");
-            lua_CFunction default_ctor = &ctor_wrapper<Type>::invoke;
+            lua_CFunction default_ctor = ctor_wrapper<Type>::invoke;
             lua_pushcfunction(L, default_ctor);
             lua_rawset(L, mt_idx);
         }
 
         // one __index to rule them all and in lua bind them
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, &index_);
+        lua_pushcfunction(L, index_);
         lua_rawset(L, mt_idx);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, &new_index);
+        lua_pushcfunction(L, new_index);
         lua_rawset(L, mt_idx);
 
         user_data::add_destructing_functions(L, mt_idx);
@@ -51,13 +51,13 @@ public:
     template <typename... Args>
     class_& constructor(const std::string_view name) {
         static_assert(std::is_constructible_v<Type, Args...>, "class should be constructible with given arguments");
-        return constructor(name, &ctor_wrapper<Type, Args...>::invoke);
+        return constructor(name, ctor_wrapper<Type, Args...>::invoke);
     }
 
     template <typename... Args>
     class_& construct_shared(const std::string_view name) {
         static_assert(std::is_constructible_v<Type, Args...>, "class should be constructible with given arguments");
-        return constructor(name, &shared_ctor_wrapper<Type, Args...>::invoke);
+        return constructor(name, shared_ctor_wrapper<Type, Args...>::invoke);
     }
 
     class_& constructor(const std::string_view name, lua_CFunction functor) {
@@ -71,7 +71,7 @@ public:
 
     template <auto func>
     class_& function(const std::string_view name) {
-        return function(name, &function_wrapper<decltype(func), func>::invoke);
+        return function(name, function_wrapper<decltype(func), func>::invoke);
     }
 
     class_& function(const std::string_view name, lua_CFunction luaFunction) {
@@ -81,7 +81,7 @@ public:
 
     template <auto func>
     class_& class_function(const std::string_view name) {
-        return class_function(name, &class_function_wrapper<decltype(func), func>::invoke);
+        return class_function(name, class_function_wrapper<decltype(func), func>::invoke);
     }
 
     class_& class_function(const std::string_view name, lua_CFunction luaFunction) {
@@ -95,14 +95,7 @@ public:
 
     template <auto prop>
     class_& property_readonly(const std::string_view name) {
-        return property(name, &property_wrapper<get, decltype(prop), prop>::invoke, nullptr);
-    }
-
-    template <auto prop>
-    class_& property(const std::string_view name) {
-        return property(name,
-                        &property_wrapper<get, decltype(prop), prop>::invoke,
-                        &property_wrapper<set, decltype(prop), prop>::invoke);
+        return property_readonly(name, property_wrapper<get, decltype(prop), prop>::invoke);
     }
 
     class_& property_readonly(const std::string_view name, lua_CFunction getter_function) {
@@ -110,14 +103,46 @@ public:
         return *this;
     }
 
+    template <auto prop>
+    class_& property(const std::string_view name) {
+        static_assert(std::is_member_pointer_v<decltype(prop)>);
+        if constexpr (std::is_member_object_pointer_v<decltype(prop)>) {
+            return property(name,
+                            property_wrapper<get, decltype(prop), prop>::invoke,
+                            property_wrapper<set, decltype(prop), prop>::invoke);
+        } else {
+            return property(name, property_wrapper<get, decltype(prop), prop>::invoke, nullptr);
+        }
+    }
+
+    template <auto getter, auto setter>
+    class_& property(const std::string_view name) {
+        static_assert(std::is_member_pointer_v<decltype(getter)>);
+        static_assert(std::is_member_pointer_v<decltype(setter)>);
+        return property(name,
+                        property_wrapper<get, decltype(getter), getter>::invoke,
+                        property_wrapper<set, decltype(setter), setter>::invoke);
+    }
+
     class_& property(const std::string_view name, lua_CFunction getter_function, lua_CFunction setter_function) {
         _info->properties.emplace(name, property_data(getter_function, setter_function));
         return *this;
     }
 
+    template <auto getter>
+    class_& array_access() {
+        return array_access(function_wrapper<decltype(getter), getter>::invoke);
+    }
+
     class_& array_access(lua_CFunction getter_function) {
         _info->array_access_getter = getter_function;
         return *this;
+    }
+
+    template <auto getter, auto setter>
+    class_& array_access() {
+        return array_access(function_wrapper<decltype(getter), getter>::invoke,
+                            function_wrapper<decltype(setter), setter>::invoke);
     }
 
     class_& array_access(lua_CFunction getter_function, lua_CFunction setter_function) {
@@ -233,7 +258,7 @@ inline void function(lua_State* L, const std::string_view name, lua_CFunction lu
 
 template <auto func>
 void function(lua_State* L, const std::string_view name) {
-    function(L, name, &function_wrapper<decltype(func), func>::invoke);
+    function(L, name, function_wrapper<decltype(func), func>::invoke);
 }
 
 } // namespace luabind

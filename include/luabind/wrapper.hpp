@@ -211,11 +211,36 @@ struct property_wrapper<get, R(T::*), prop> {
     }
 };
 
+template <typename R, typename T, R (T::*func)()>
+struct property_wrapper<get, R (T::*)(), func> {
+    static int invoke(lua_State* L) {
+        T* self = value_mirror<T*>::from_lua(L, 1);
+        return value_mirror<R>::to_lua(L, (self->*func)());
+    }
+};
+
+template <typename R, typename T, R (T::*func)() const>
+struct property_wrapper<get, R (T::*)() const, func> {
+    static int invoke(lua_State* L) {
+        const T* self = value_mirror<T*>::from_lua(L, 1);
+        return value_mirror<R>::to_lua(L, (self->*func)());
+    }
+};
+
 template <typename R, typename T, R(T::*prop)>
 struct property_wrapper<set, R(T::*), prop> {
     static int invoke(lua_State* L) {
         T* self = value_mirror<T*>::from_lua(L, 1);
         self->*prop = value_mirror<R>::from_lua(L, 3);
+        return 0;
+    }
+};
+
+template <typename R, typename T, void (T::*func)(R)>
+struct property_wrapper<set, void (T::*)(R), func> {
+    static int invoke(lua_State* L) {
+        T* self = value_mirror<T*>::from_lua(L, 1);
+        (self->*func)(value_mirror<R>::from_lua(L, 3));
         return 0;
     }
 };

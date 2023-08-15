@@ -179,8 +179,8 @@ struct value_mirror<double> : number_mirror<double> {};
 
 template <>
 struct value_mirror<std::string_view> {
-    static int to_lua(lua_State* L, const std::string_view& v) {
-        lua_pushstring(L, v.data());
+    static int to_lua(lua_State* L, const std::string_view v) {
+        lua_pushlstring(L, v.data(), v.size());
         return 1;
     }
 

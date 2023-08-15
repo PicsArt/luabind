@@ -30,18 +30,17 @@ struct property_data {
 };
 
 struct type_info {
-    std::string name;
-    std::vector<type_info*> bases;
+    const std::string name;
+    const std::vector<type_info*> bases;
     lua_CFunction index;
     lua_CFunction new_index;
     lua_CFunction array_access_getter;
     lua_CFunction array_access_setter;
     std::map<std::string, lua_CFunction, std::less<>> functions;
     std::map<std::string, property_data, std::less<>> properties;
-    int metatable;
 
     void get_metatable(lua_State* L) const {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, metatable);
+        luaL_getmetatable(L, name.c_str());
     }
 
     type_info(lua_State* L,
@@ -55,11 +54,9 @@ struct type_info {
         , new_index(new_index_functor)
         , array_access_getter(nullptr)
         , array_access_setter(nullptr) {
-        lua_newtable(L);
-        lua_pushvalue(L, -1);
-        metatable = luaL_ref(L, LUA_REGISTRYINDEX);
+        luaL_newmetatable(L, name.c_str());
         lua_setglobal(L, name.c_str());
-        // stack is clean
+        //  stack is clean
     }
 };
 
@@ -70,7 +67,7 @@ private:
 public:
     static type_storage& get_instance(lua_State* L) {
         static const char* storage_name = "LuaBindTypeStorage";
-        int r = lua_getglobal(L, storage_name);
+        int r = lua_getfield(L, LUA_REGISTRYINDEX, storage_name);
         if (r == LUA_TUSERDATA) {
             void* p = lua_touserdata(L, -1);
             auto ud = static_cast<type_storage**>(p);
@@ -95,7 +92,7 @@ public:
         });
         lua_rawset(L, -3);
         lua_setmetatable(L, -2);
-        lua_setglobal(L, storage_name);
+        lua_setfield(L, LUA_REGISTRYINDEX, storage_name);
         return *instance;
     }
 
@@ -108,7 +105,6 @@ public:
         if (it != instance.m_types.end()) {
             return &it->second;
         }
-        // TODO insert with hint
         std::vector<type_info*> bases;
         bases.reserve(sizeof...(Bases));
         (add_base_class<Bases>(instance, bases), ...);

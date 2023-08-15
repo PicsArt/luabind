@@ -2,7 +2,7 @@
 
 class IntWrapper : public luabind::Object {
 public:
-    IntWrapper(int value)
+    IntWrapper(int value = 7)
         : _value(value) {}
 
     int get() const {
@@ -14,6 +14,15 @@ public:
     }
 
 public:
+    static int constructor(lua_State* L) {
+        int args = lua_gettop(L) - 1; // first argument is the metatable
+        if (args == 0) {
+            return luabind::value_mirror<IntWrapper>::to_lua(L);
+        } else {
+            return luabind::value_mirror<IntWrapper>::to_lua(L, luabind::value_mirror<int>::from_lua(L, 2));
+        }
+    }
+
     static int toLuaTable(lua_State* L) {
         int argumentCount = lua_gettop(L);
         EXPECT_EQ(argumentCount, 1);
@@ -39,7 +48,7 @@ class CustomFunctionTest : public LuaTest {
 protected:
     void SetUp() override {
         luabind::class_<IntWrapper>(L, "IntWrapper")
-            .constructor<int>("new")
+            .constructor("new", &IntWrapper::constructor)
             .class_function<IntWrapper::create>("create")
             .function("toTable", IntWrapper::toLuaTable)
             .property_readonly("table", IntWrapper::luaTable);
@@ -47,6 +56,18 @@ protected:
         EXPECT_EQ(lua_gettop(L), 0);
     }
 };
+
+TEST_F(CustomFunctionTest, CustomConstructor) {
+    IntWrapper wrapper;
+    wrapper = runWithResult<IntWrapper>(R"--(
+        return IntWrapper:new()
+    )--");
+    EXPECT_EQ(wrapper.get(), 7);
+    wrapper = runWithResult<IntWrapper>(R"--(
+        return IntWrapper:new(13)
+    )--");
+    EXPECT_EQ(wrapper.get(), 13);
+}
 
 TEST_F(CustomFunctionTest, CustomFunction) {
     auto value = runWithResult<int>(R"--(
@@ -74,7 +95,7 @@ TEST_F(CustomFunctionTest, ObjCustomTable) {
     auto value = lua_tointeger(L, -1);
     EXPECT_EQ(value, 40);
     lua_pop(L, 2);
-    
+
     lua_newtable(L);
     lua_pushinteger(L, 34);
     lua_setfield(L, -2, "otherCustomProperty");

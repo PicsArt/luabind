@@ -165,30 +165,32 @@ private:
     static int index_impl(lua_State* L) {
         type_info* info = type_storage::find_type_info<Type>(L);
 
-        auto key_type = lua_type(L, 2);
-        if (key_type != LUA_TNUMBER && key_type != LUA_TSTRING) {
-            luaL_error(L, "Key type should be number or string, '%s' is provided.", lua_typename(L, key_type));
+        const bool is_integer = lua_isinteger(L, 2);
+        const int key_type = lua_type(L, 2);
+        if (!is_integer && key_type != LUA_TSTRING) {
+            luaL_error(L, "Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
         }
 
-        if (key_type == LUA_TNUMBER && info->array_access_getter) {
+        if (is_integer) {
+            if (info->array_access_getter == nullptr) {
+                luaL_error(L, "Type '%s' does not provide array get access.", info->name.c_str());
+            }
             return info->array_access_getter(L);
         }
 
-        if (key_type == LUA_TSTRING) {
-            auto key = value_mirror<std::string_view>::from_lua(L, 2);
-            auto p_it = info->properties.find(key);
-            if (p_it != info->properties.end()) {
-                if (p_it->second.getter) {
-                    return p_it->second.getter(L);
-                } else {
-                    luaL_error(L, "Property named '%s' does not have getter.", key);
-                }
+        // key is string
+        auto key = value_mirror<std::string_view>::from_lua(L, 2);
+        auto p_it = info->properties.find(key);
+        if (p_it != info->properties.end()) {
+            if (p_it->second.getter == nullptr) {
+                luaL_error(L, "Property named '%s' does not have a getter.", key);
             }
-            auto f_it = info->functions.find(key);
-            if (f_it != info->functions.end()) {
-                lua_pushcfunction(L, f_it->second);
-                return 1;
-            }
+            return p_it->second.getter(L);
+        }
+        auto f_it = info->functions.find(key);
+        if (f_it != info->functions.end()) {
+            lua_pushcfunction(L, f_it->second);
+            return 1;
         }
         // lua doesn't do recursive index lookup through metatables
         // if __index is bound to a C function, so we do it ourselves.
@@ -216,25 +218,27 @@ private:
     static int new_index_impl(lua_State* L) {
         type_info* info = type_storage::find_type_info<Type>(L);
 
-        auto key_type = lua_type(L, 2);
-        if (key_type != LUA_TNUMBER && key_type != LUA_TSTRING) {
-            luaL_error(L, "Key type should be number or string, '%s' is provided.", lua_typename(L, key_type));
+        const bool is_integer = lua_isinteger(L, 2);
+        const int key_type = lua_type(L, 2);
+        if (!is_integer && key_type != LUA_TSTRING) {
+            luaL_error(L, "Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
         }
 
-        if (key_type == LUA_TNUMBER && info->array_access_setter) {
+        if (is_integer) {
+            if (info->array_access_setter == nullptr) {
+                luaL_error(L, "Type '%s' does not provide array set access.", info->name.c_str());
+            }
             return info->array_access_setter(L);
         }
 
-        if (key_type == LUA_TSTRING) {
-            auto key = value_mirror<std::string_view>::from_lua(L, 2);
-            auto p_it = info->properties.find(key);
-            if (p_it != info->properties.end()) {
-                if (p_it->second.setter) {
-                    return p_it->second.setter(L);
-                } else {
-                    luaL_error(L, "Property named '%s' is read only.", key);
-                }
+        // key is string
+        auto key = value_mirror<std::string_view>::from_lua(L, 2);
+        auto p_it = info->properties.find(key);
+        if (p_it != info->properties.end()) {
+            if (p_it->second.setter == nullptr) {
+                luaL_error(L, "Property '%s' is read only.", key);
             }
+            return p_it->second.setter(L);
         }
 
         for (type_info* base : info->bases) {

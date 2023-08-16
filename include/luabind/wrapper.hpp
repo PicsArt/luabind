@@ -88,8 +88,7 @@ struct function_wrapper<R (T::*)(Args...), func> {
                 (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
                 return 0;
             } else {
-                decltype(auto) r = (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return value_mirror<R>::to_lua(L, r);
+                return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
             }
         } catch (const luabind::error& e) {
             lua_pushstring(L, e.what());
@@ -119,8 +118,7 @@ struct function_wrapper<R (T::*)(Args...) const, func> {
                 (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
                 return 0;
             } else {
-                decltype(auto) r = (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return value_mirror<R>::to_lua(L, r);
+                return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
             }
         } catch (const luabind::error& e) {
             lua_pushstring(L, e.what());
@@ -149,8 +147,7 @@ struct function_wrapper<R (*)(Args...), func> {
                 (*func)(value_mirror<Args>::from_lua(L, Indices)...);
                 return 0;
             } else {
-                decltype(auto) r = (*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return value_mirror<R>::to_lua(L, r);
+                return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
             }
         } catch (const luabind::error& e) {
             lua_pushstring(L, e.what());

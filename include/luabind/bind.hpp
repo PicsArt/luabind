@@ -183,7 +183,7 @@ private:
         auto p_it = info->properties.find(key);
         if (p_it != info->properties.end()) {
             if (p_it->second.getter == nullptr) {
-                luaL_error(L, "Property named '%s' does not have a getter.", key);
+                luaL_error(L, "Property named '%s' does not have a getter.", key.data());
             }
             return p_it->second.getter(L);
         }
@@ -236,7 +236,7 @@ private:
         auto p_it = info->properties.find(key);
         if (p_it != info->properties.end()) {
             if (p_it->second.setter == nullptr) {
-                luaL_error(L, "Property '%s' is read only.", key);
+                luaL_error(L, "Property '%s' is read only.", key.data());
             }
             return p_it->second.setter(L);
         }

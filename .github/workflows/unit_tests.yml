@@ -15,7 +15,7 @@ jobs:
   unit_tests:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}
+      image: ghcr.io/picsart/luabind:main
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

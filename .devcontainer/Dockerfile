@@ -1,4 +1,4 @@
-FROM arm64v8/ubuntu
+FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -8,6 +8,7 @@ RUN apt-get -q update -y && \
     git \
     cmake \
     ninja-build \
+    lcov \
     lsb-release wget software-properties-common gnupg \
     libstdc++6
 
@@ -17,7 +18,8 @@ RUN wget https://apt.llvm.org/llvm.sh && \
     rm -f llvm.sh; \
     ln -s /usr/bin/clang-16 /usr/bin/clang; \
     ln -s /usr/bin/clang++-16 /usr/bin/clang++; \
-    ln -s /usr/bin/lldb-16 /usr/bin/lldb;
+    ln -s /usr/bin/lldb-16 /usr/bin/lldb; \
+    ln -sf /usr/bin/llvm-cov-16 /usr/bin/gcov;
 
 # Change these values by your uid/gid during build
 ARG USERID=1000

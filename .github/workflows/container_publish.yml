@@ -46,7 +46,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: print info
-        - run: |
+        run: |
           echo tags
           echo "{{ steps.meta.outputs.tags }}"
           echo labels

@@ -9,8 +9,9 @@ RUN apt-get -q update -y && \
     cmake \
     ninja-build \
     lcov \
-    lsb-release wget software-properties-common gnupg \
-    libstdc++6
+    libstdc++6 \
+    # the following packages are required by llvm.sh
+    lsb-release wget software-properties-common gnupg
 
 RUN wget https://apt.llvm.org/llvm.sh && \
     chmod +x llvm.sh && \

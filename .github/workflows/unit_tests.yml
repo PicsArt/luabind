@@ -3,6 +3,7 @@ name: Unit tests
 on:
   push:
     branches: [ "main" ]
+
   pull_request:
     branches: [ "main" ]
 
@@ -11,9 +12,13 @@ env:
   CXX: clang++
   
 jobs:
-  build:
-
+  unit_tests:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3
@@ -21,7 +26,7 @@ jobs:
         submodules: recursive
 
     - name: Configure
-      run: cmake --preset=luabind -G="Unix Makefiles"
+      run: cmake --preset=luabind
     - name: Build
       run: cmake --build --preset=luabind --target all
     - name: Unit tests

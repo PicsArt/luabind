@@ -3,6 +3,7 @@ name: Unit tests
 on:
   push:
     branches: [ "main" ]
+
   pull_request:
     branches: [ "main" ]
 
@@ -11,9 +12,14 @@ env:
   CXX: clang++
   
 jobs:
-  build:
-
+  unit_tests:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/picsart/luabind:main
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --user root
 
     steps:
     - uses: actions/checkout@v3
@@ -21,11 +27,15 @@ jobs:
         submodules: recursive
 
     - name: Configure
-      run: cmake --preset=luabind -G="Unix Makefiles"
+      run: cmake --preset=luabind -DCODE_COVERAGE=ON
     - name: Build
       run: cmake --build --preset=luabind --target all
     - name: Unit tests
       run: ctest --preset=unit_tests
+    - name: Collect coverage
+      run: lcov --directory . --capture --output-file coverage.info
+    - name: Filter coverage
+      run: lcov --extract coverage.info '*/luabind/include/*' --output-file coverage.info
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3

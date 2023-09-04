@@ -48,6 +48,6 @@ jobs:
       - name: print info
         run: |
           echo tags
-          echo "{{ steps.meta.outputs.tags }}"
+          echo "${{ steps.meta.outputs.tags }}"
           echo labels
           echo "${{ steps.meta.outputs.labels }}"

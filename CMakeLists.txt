@@ -24,6 +24,17 @@ if(INCLUDE_LUA_LIB_WITH_EXTERN_C)
     target_compile_definitions(luabind INTERFACE INCLUDE_LUA_LIB_WITH_EXTERN_C)
 endif(INCLUDE_LUA_LIB_WITH_EXTERN_C)
 
+option(CODE_COVERAGE "Enable coverage reporting" OFF)
+if(CODE_COVERAGE)
+    # Add required flags (GCC & LLVM/Clang)
+    target_compile_options(luabind INTERFACE
+        -O0        # no optimization
+        -g         # generate debug info
+        --coverage # sets all required flags
+    )
+    target_link_options(luabind INTERFACE --coverage)
+endif(CODE_COVERAGE)
+
 if(LUABIND_TEST)
     enable_testing()
     add_subdirectory(tests)

@@ -16,17 +16,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Prerequisites
-      run: apt-get -q update -y && \
-           apt-get -q install -y --no-install-recommends \
-           ninja-build
-
     - uses: actions/checkout@v3
       with:
         submodules: recursive
 
     - name: Configure
-      run: cmake --preset=luabind
+      run: cmake --preset=luabind -G="Unix Makefiles"
     - name: Build
       run: cmake --build --preset=luabind --target all
     - name: Unit tests

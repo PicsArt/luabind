@@ -32,11 +32,9 @@ jobs:
       run: cmake --build --preset=luabind --target all
     - name: Unit tests
       run: ctest --preset=unit_tests
-    - name: Collect coverage
-      run: lcov --directory . --capture --output-file coverage.info
-    - name: Filter coverage
-      run: lcov --extract coverage.info '*/luabind/include/*' --output-file coverage.info
 
+    - name: Collect coverage
+      run: lcov --directory . --capture  --include '*/luabind/include/*'  --output-file coverage.info
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:

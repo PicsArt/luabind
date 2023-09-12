@@ -123,6 +123,12 @@ public:
     }
 
     template <typename T>
+    static std::string_view type_name(lua_State* L) {
+        type_info* info = find_type_info<T>(L);
+        return info != nullptr ? std::string_view {info->name} : std::string_view {typeid(T).name()};
+    }
+
+    template <typename T>
     static type_info* find_type_info(lua_State* L) {
         return find_type_info(L, std::type_index(typeid(T)));
     }
@@ -139,7 +145,7 @@ private:
         static_assert(std::is_class_v<Base>);
         auto base_it = instance.m_types.find(std::type_index(typeid(Base)));
         if (base_it == instance.m_types.end()) {
-            throw luabind::error("Base class should be bound before child.");
+            reportError("Base class should be bound before child.");
         }
         bases.push_back(&(base_it->second));
     }

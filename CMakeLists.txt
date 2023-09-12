@@ -12,6 +12,8 @@ set(LUA_LIB_NAME luabind_lua CACHE STRING "lua library name")
 # variable to include tests to build phase
 set(LUABIND_TEST ON CACHE BOOL "variable to determine whether tests are included in build phase or not")
 
+option(CODE_COVERAGE "Enable coverage reporting" OFF)
+
 add_subdirectory(third_party)
 
 add_library(luabind INTERFACE)
@@ -24,18 +26,19 @@ if(INCLUDE_LUA_LIB_WITH_EXTERN_C)
     target_compile_definitions(luabind INTERFACE INCLUDE_LUA_LIB_WITH_EXTERN_C)
 endif(INCLUDE_LUA_LIB_WITH_EXTERN_C)
 
-option(CODE_COVERAGE "Enable coverage reporting" OFF)
-if(CODE_COVERAGE)
-    # Add required flags (GCC & LLVM/Clang)
-    target_compile_options(luabind INTERFACE
-        -O0        # no optimization
-        -g         # generate debug info
-        --coverage # sets all required flags
-    )
-    target_link_options(luabind INTERFACE --coverage)
-endif(CODE_COVERAGE)
-
 if(LUABIND_TEST)
+    target_compile_options(luabind INTERFACE -Wall -Wextra -Wnewline-eof -Wformat -Werror)
+
+    if(CODE_COVERAGE)
+        # Add required flags (GCC & LLVM/Clang)
+        target_compile_options(luabind INTERFACE
+            -O0        # no optimization
+            -g         # generate debug info
+            --coverage # sets all required flags
+        )
+        target_link_options(luabind INTERFACE --coverage)
+    endif(CODE_COVERAGE)
+
     enable_testing()
     add_subdirectory(tests)
 endif()

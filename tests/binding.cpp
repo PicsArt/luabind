@@ -425,7 +425,7 @@ protected:
     void SetUp() override {
         // clang-format off
         luabind::class_<Array>(L, "Array")
-            .constructor("new", &Array::ctor)
+            .constructor<&Array::ctor>("new")
             .array_access<&Array::getElement, &Array::setElement>();
 
         // clang-format on

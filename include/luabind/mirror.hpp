@@ -53,9 +53,15 @@ struct value_mirror<T*> {
 
     static T* from_lua(lua_State* L, int idx) {
         auto ud = user_data::from_lua(L, idx);
+        if (ud == nullptr || ud->object == nullptr) {
+            return nullptr;
+        }
         auto p = dynamic_cast<T*>(ud->object);
-        if (ud->object != nullptr && p == nullptr) {
-            throw error("Invalid type");
+        if (p == nullptr) {
+            reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
+                        idx,
+                        type_storage::type_name<T>(L).data(),
+                        ud->info->name.c_str());
         }
         return p;
     }
@@ -84,14 +90,16 @@ struct value_mirror<std::shared_ptr<T>> {
         auto ud = user_data::from_lua(L, idx);
         auto sud = dynamic_cast<shared_user_data*>(ud);
         if (sud == nullptr) {
-            throw error("Can't get shared_ptr from user data");
+            reportError("Argument %i does not represent shared_ptr.", idx);
         }
         auto r = std::dynamic_pointer_cast<T>(sud->data);
         if (!r) {
-            throw error("Invalid type");
+            reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
+                        idx,
+                        type_storage::type_name<T>(L).data(),
+                        ud->info->name.c_str());
         }
         return r;
-        // return sud ? std::dynamic_pointer_cast<T>(sud->data) : cpp_type {};
     }
 };
 
@@ -116,7 +124,7 @@ struct value_mirror<bool> {
     static bool from_lua(lua_State* L, int idx) {
         int isb = lua_isboolean(L, idx);
         if (isb != 1) {
-            throw luabind::error("Provided argument is not a boolean");
+            reportError("Provided argument at %i is not a boolean.", idx);
         }
         int r = lua_toboolean(L, idx);
         return static_cast<bool>(r);
@@ -141,13 +149,13 @@ struct number_mirror {
     static raw_type from_lua(lua_State* L, int idx) {
         if constexpr (std::is_integral_v<raw_type>) {
             if (0 == lua_isinteger(L, idx)) {
-                throw luabind::error("Provided argument is not an integer.");
+                reportError("Provided argument at %i is not an integer.", idx);
             }
             return static_cast<raw_type>(lua_tointeger(L, idx));
         } else {
-            if (0 == lua_isnumber(L, idx)) {
+            if (lua_type(L, idx) != LUA_TNUMBER) {
                 // lua_error does longjmp, think about memory leak.
-                throw luabind::error("Provided argument is not a number.");
+                reportError("Provided argument at %i is not a number.", idx);
             }
             return static_cast<raw_type>(lua_tonumber(L, idx));
         }
@@ -186,7 +194,7 @@ struct value_mirror<std::string_view> {
 
     static std::string_view from_lua(lua_State* L, int idx) {
         if (lua_isstring(L, idx) == 0) {
-            throw luabind::error("Provided argument is not a string.");
+            reportError("Provided argument at %i is not a string.", idx);
         }
         size_t len;
         const char* lv = lua_tolstring(L, idx, &len);
@@ -227,10 +235,10 @@ struct value_mirror<std::pair<T, Y>> {
 
     static type from_lua(lua_State* L, int idx) {
         if (lua_istable(L, idx) == 0) {
-            throw luabind::error("Provided argument is not a table.");
+            reportError("Provided argument at %i for the pair is not a table.", idx);
         }
         if (lua_rawlen(L, idx) != 2) {
-            throw luabind::error("Table is of invalid length.");
+            reportError("Provided table at %i for the pair value has invalid length.", idx);
         }
         lua_rawgeti(L, idx, 1);
         T f = value_mirror<T>::from_lua(L, -1);

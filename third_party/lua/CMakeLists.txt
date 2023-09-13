@@ -9,4 +9,4 @@ add_library(luabind_lua STATIC ${luabind_lua_sources})
 
 target_include_directories(luabind_lua_headers SYSTEM INTERFACE ${LUA_SOURCE_DIR})
 
-target_link_libraries(luabind_lua luabind_lua_headers)
+target_link_libraries(luabind_lua PUBLIC luabind_lua_headers)

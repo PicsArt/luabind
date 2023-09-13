@@ -42,6 +42,18 @@ public:
         return t;
     }
 
+    void runExpectingError(const std::string_view script, const std::string_view expectedMessage) {
+        int lr = luaL_loadbufferx(L, script.data(), script.size(), "luabind::test", "t");
+        if (lr != LUA_OK) {
+            const std::string_view errorMessage = luabind::value_mirror<std::string_view>::from_lua(L, -1);
+            EXPECT_EQ(errorMessage, expectedMessage);
+        }
+        int cr = lua_pcall(L, 0, 0, 0);
+        EXPECT_NE(cr, LUA_OK);
+        const std::string_view errorMessage = luabind::value_mirror<std::string_view>::from_lua(L, -1);
+        EXPECT_EQ(errorMessage, expectedMessage);
+    }
+
 protected:
     lua_State* L = nullptr;
 };

@@ -216,7 +216,7 @@ private:
 
     static int new_index(lua_State* L) {
         int r = new_index_impl(L);
-        if (r != 0) return r;
+        if (r != 0) return 0;
         // if there is no result in C++ add new value to the lua table bound to this object
         user_data::get_custom_table(L, 1); // custom table
         lua_pushvalue(L, 2); // key
@@ -233,24 +233,26 @@ private:
         if (!is_integer && key_type != LUA_TSTRING) {
             reportError("Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
         }
-
         if (is_integer) {
             if (info->array_access_setter == nullptr) {
                 reportError("Type '%s' does not provide array set access.", info->name.c_str());
             }
-            return info->array_access_setter(L);
+            info->array_access_setter(L);
+            return 1;
         }
-
-        // key is string
+        // key is a string
         auto key = value_mirror<std::string_view>::from_lua(L, 2);
         auto p_it = info->properties.find(key);
         if (p_it != info->properties.end()) {
             if (p_it->second.setter == nullptr) {
                 reportError("Property '%s' is read only.", key.data());
             }
-            return p_it->second.setter(L);
+            p_it->second.setter(L);
+            return 1;
         }
 
+        // lua doesn't do recursive index lookup through metatables
+        // if __new_index is bound to a C function, so we do it ourselves.
         for (type_info* base : info->bases) {
             int r = base->new_index(L);
             if (r != 0) {

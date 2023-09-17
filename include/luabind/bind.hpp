@@ -36,118 +36,128 @@ public:
 
         // one __index to rule them all and in lua bind them
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, index_);
+        lua_pushcfunction(L, lua_function<index_>::safe_invoke);
         lua_rawset(L, mt_idx);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, new_index);
+        lua_pushcfunction(L, lua_function<new_index>::safe_invoke);
         lua_rawset(L, mt_idx);
 
         user_data::add_destructing_functions(L, mt_idx);
-        function("delete", user_data::destruct);
+        function<user_data::destruct>("delete");
         lua_pop(L, 1); // pop metatable
     }
 
     template <typename... Args>
     class_& constructor(const std::string_view name) {
         static_assert(std::is_constructible_v<Type, Args...>, "class should be constructible with given arguments");
-        return constructor(name, ctor_wrapper<Type, Args...>::invoke);
+        return constructor<ctor_wrapper<Type, Args...>::invoke>(name);
     }
 
     template <typename... Args>
     class_& construct_shared(const std::string_view name) {
         static_assert(std::is_constructible_v<Type, Args...>, "class should be constructible with given arguments");
-        return constructor(name, shared_ctor_wrapper<Type, Args...>::invoke);
+        return constructor<shared_ctor_wrapper<Type, Args...>::invoke>(name);
     }
 
-    class_& constructor(const std::string_view name, lua_CFunction functor) {
+    template <lua_CFunction func>
+    class_& constructor(const std::string_view name) {
         _info->get_metatable(_L);
         value_mirror<std::string_view>::to_lua(_L, name);
-        lua_pushcfunction(_L, functor);
+        lua_pushcfunction(_L, lua_function<func>::safe_invoke);
         lua_rawset(_L, -3);
         lua_pop(_L, 1); // pop metatable
         return *this;
     }
 
     template <auto func>
+        requires(!std::is_same_v<decltype(func), lua_CFunction>)
     class_& function(const std::string_view name) {
-        return function(name, function_wrapper<decltype(func), func>::invoke);
+        return function<function_wrapper<decltype(func), func>::invoke>(name);
     }
 
-    class_& function(const std::string_view name, lua_CFunction luaFunction) {
-        _info->functions[std::string {name}] = luaFunction;
+    template <lua_CFunction func>
+    class_& function(const std::string_view name) {
+        _info->functions[std::string {name}] = lua_function<func>::safe_invoke;
         return *this;
     }
 
     template <auto func>
+        requires(!std::is_same_v<decltype(func), lua_CFunction>)
     class_& class_function(const std::string_view name) {
-        return class_function(name, class_function_wrapper<decltype(func), func>::invoke);
+        return class_function<class_function_wrapper<decltype(func), func>::invoke>(name);
     }
 
-    class_& class_function(const std::string_view name, lua_CFunction luaFunction) {
+    template <lua_CFunction func>
+    class_& class_function(const std::string_view name) {
         _info->get_metatable(_L);
         value_mirror<std::string_view>::to_lua(_L, name);
-        lua_pushcfunction(_L, luaFunction);
+        lua_pushcfunction(_L, lua_function<func>::safe_invoke);
         lua_rawset(_L, -3);
         lua_pop(_L, 1); // pop metatable
         return *this;
     }
 
     template <auto prop>
+        requires(std::is_member_pointer_v<decltype(prop)>)
     class_& property_readonly(const std::string_view name) {
-        return property_readonly(name, property_wrapper<get, decltype(prop), prop>::invoke);
+        return property_readonly<property_wrapper<get, decltype(prop), prop>::invoke>(name);
     }
 
-    class_& property_readonly(const std::string_view name, lua_CFunction getter_function) {
-        _info->properties.emplace(name, property_data(getter_function, nullptr));
+    template <lua_CFunction func>
+    class_& property_readonly(const std::string_view name) {
+        _info->properties.emplace(name, property_data(lua_function<func>::safe_invoke, nullptr));
         return *this;
     }
 
     template <auto prop>
+        requires(std::is_member_pointer_v<decltype(prop)>)
     class_& property(const std::string_view name) {
-        static_assert(std::is_member_pointer_v<decltype(prop)>);
         if constexpr (std::is_member_object_pointer_v<decltype(prop)>) {
-            return property(name,
-                            property_wrapper<get, decltype(prop), prop>::invoke,
-                            property_wrapper<set, decltype(prop), prop>::invoke);
+            return property<property_wrapper<get, decltype(prop), prop>::invoke,
+                            property_wrapper<set, decltype(prop), prop>::invoke>(name);
         } else {
-            return property(name, property_wrapper<get, decltype(prop), prop>::invoke, nullptr);
+            return property_readonly<property_wrapper<get, decltype(prop), prop>::invoke>(name);
         }
     }
 
     template <auto getter, auto setter>
+        requires(std::is_member_pointer_v<decltype(getter)> && std::is_member_pointer_v<decltype(setter)>)
     class_& property(const std::string_view name) {
-        static_assert(std::is_member_pointer_v<decltype(getter)>);
-        static_assert(std::is_member_pointer_v<decltype(setter)>);
-        return property(name,
-                        property_wrapper<get, decltype(getter), getter>::invoke,
-                        property_wrapper<set, decltype(setter), setter>::invoke);
+        return property<property_wrapper<get, decltype(getter), getter>::invoke,
+                        property_wrapper<set, decltype(setter), setter>::invoke>(name);
     }
 
-    class_& property(const std::string_view name, lua_CFunction getter_function, lua_CFunction setter_function) {
-        _info->properties.emplace(name, property_data(getter_function, setter_function));
+    template <lua_CFunction getter, lua_CFunction setter>
+    class_& property(const std::string_view name) {
+        _info->properties.emplace(name,
+                                  property_data(lua_function<getter>::safe_invoke, lua_function<setter>::safe_invoke));
         return *this;
     }
 
     template <auto getter>
+        requires(!std::is_same_v<decltype(getter), lua_CFunction>)
     class_& array_access() {
         return array_access(function_wrapper<decltype(getter), getter>::invoke);
     }
 
-    class_& array_access(lua_CFunction getter_function) {
-        _info->array_access_getter = getter_function;
+    template <lua_CFunction getter>
+    class_& array_access() {
+        _info->array_access_getter = lua_function<getter>::safe_invoke;
         return *this;
     }
 
     template <auto getter, auto setter>
+        requires(!std::is_same_v<decltype(getter), lua_CFunction> && !std::is_same_v<decltype(setter), lua_CFunction>)
     class_& array_access() {
-        return array_access(function_wrapper<decltype(getter), getter>::invoke,
-                            function_wrapper<decltype(setter), setter>::invoke);
+        return array_access<function_wrapper<decltype(getter), getter>::invoke,
+                            function_wrapper<decltype(setter), setter>::invoke>();
     }
 
-    class_& array_access(lua_CFunction getter_function, lua_CFunction setter_function) {
-        _info->array_access_getter = getter_function;
-        _info->array_access_setter = setter_function;
+    template <lua_CFunction getter, lua_CFunction setter>
+    class_& array_access() {
+        _info->array_access_getter = lua_function<getter>::safe_invoke;
+        _info->array_access_setter = lua_function<setter>::safe_invoke;
         return *this;
     }
 
@@ -168,12 +178,12 @@ private:
         const bool is_integer = lua_isinteger(L, 2);
         const int key_type = lua_type(L, 2);
         if (!is_integer && key_type != LUA_TSTRING) {
-            luaL_error(L, "Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
+            reportError("Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
         }
 
         if (is_integer) {
             if (info->array_access_getter == nullptr) {
-                luaL_error(L, "Type '%s' does not provide array get access.", info->name.c_str());
+                reportError("Type '%s' does not provide array get access.", info->name.c_str());
             }
             return info->array_access_getter(L);
         }
@@ -183,7 +193,7 @@ private:
         auto p_it = info->properties.find(key);
         if (p_it != info->properties.end()) {
             if (p_it->second.getter == nullptr) {
-                luaL_error(L, "Property named '%s' does not have a getter.", key.data());
+                reportError("Property named '%s' does not have a getter.", key.data());
             }
             return p_it->second.getter(L);
         }
@@ -206,7 +216,7 @@ private:
 
     static int new_index(lua_State* L) {
         int r = new_index_impl(L);
-        if (r != 0) return r;
+        if (r != 0) return 0;
         // if there is no result in C++ add new value to the lua table bound to this object
         user_data::get_custom_table(L, 1); // custom table
         lua_pushvalue(L, 2); // key
@@ -221,26 +231,28 @@ private:
         const bool is_integer = lua_isinteger(L, 2);
         const int key_type = lua_type(L, 2);
         if (!is_integer && key_type != LUA_TSTRING) {
-            luaL_error(L, "Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
+            reportError("Key type should be integer or string, '%s' is provided.", lua_typename(L, key_type));
         }
-
         if (is_integer) {
             if (info->array_access_setter == nullptr) {
-                luaL_error(L, "Type '%s' does not provide array set access.", info->name.c_str());
+                reportError("Type '%s' does not provide array set access.", info->name.c_str());
             }
-            return info->array_access_setter(L);
+            info->array_access_setter(L);
+            return 1;
         }
-
-        // key is string
+        // key is a string
         auto key = value_mirror<std::string_view>::from_lua(L, 2);
         auto p_it = info->properties.find(key);
         if (p_it != info->properties.end()) {
             if (p_it->second.setter == nullptr) {
-                luaL_error(L, "Property '%s' is read only.", key.data());
+                reportError("Property '%s' is read only.", key.data());
             }
-            return p_it->second.setter(L);
+            p_it->second.setter(L);
+            return 1;
         }
 
+        // lua doesn't do recursive index lookup through metatables
+        // if __new_index is bound to a C function, so we do it ourselves.
         for (type_info* base : info->bases) {
             int r = base->new_index(L);
             if (r != 0) {
@@ -255,14 +267,16 @@ private:
     type_info* _info;
 };
 
-inline void function(lua_State* L, const std::string_view name, lua_CFunction luaFunction) {
-    lua_pushcfunction(L, luaFunction);
+template <lua_CFunction func>
+inline void function(lua_State* L, const std::string_view name) {
+    lua_pushcfunction(L, lua_function<func>::safe_invoke);
     lua_setglobal(L, name.data());
 }
 
 template <auto func>
+    requires(!std::is_same_v<decltype(func), lua_CFunction>)
 void function(lua_State* L, const std::string_view name) {
-    function(L, name, function_wrapper<decltype(func), func>::invoke);
+    function<function_wrapper<decltype(func), func>::invoke>(L, name);
 }
 
 } // namespace luabind

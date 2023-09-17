@@ -48,10 +48,10 @@ class CustomFunctionTest : public LuaTest {
 protected:
     void SetUp() override {
         luabind::class_<IntWrapper>(L, "IntWrapper")
-            .constructor("new", &IntWrapper::constructor)
+            .constructor<IntWrapper::constructor>("new")
             .class_function<IntWrapper::create>("create")
-            .function("toTable", IntWrapper::toLuaTable)
-            .property_readonly("table", IntWrapper::luaTable);
+            .function<IntWrapper::toLuaTable>("toTable")
+            .property_readonly<IntWrapper::luaTable>("table");
 
         EXPECT_EQ(lua_gettop(L), 0);
     }

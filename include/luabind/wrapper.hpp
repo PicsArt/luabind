@@ -5,9 +5,32 @@
 #include "lua.hpp"
 #include "mirror.hpp"
 
+#include <exception>
 #include <type_traits>
 
 namespace luabind {
+
+template <typename CRTP>
+struct exception_safe_wrapper {
+    static int safe_invoke(lua_State* L) {
+        try {
+            return CRTP::invoke(L);
+        } catch (void*) {
+            // lua throws lua_longjmp* if compiled with C++ exceptions when yielding or reporting error
+            // rethrow to not interrupt lua logic flow in that case.
+            // assuming that normal code would not throw pointer
+            throw;
+        } catch (const luabind::error& e) {
+            lua_pushstring(L, e.what());
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+        } catch (...) {
+            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        }
+        lua_error(L); // [[noreturn]]
+        return 0;
+    }
+};
 
 template <typename Type, typename... Args>
 struct ctor_wrapper {
@@ -20,20 +43,13 @@ struct ctor_wrapper {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            // +1 first argument is the Type metatable
-            if (num_args != sizeof...(Args) + 1) {
-                throw luabind::error("Invalid number of arguments");
-            }
-            return lua_user_data<Type>::to_lua(L, value_mirror<Args>::from_lua(L, Indices)...);
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        // +1 first argument is the Type metatable
+        if (num_args != sizeof...(Args) + 1) {
+            reportError(
+                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        return lua_user_data<Type>::to_lua(L, value_mirror<Args>::from_lua(L, Indices)...);
     }
 };
 
@@ -48,20 +64,13 @@ struct shared_ctor_wrapper {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            // +1 first argument is the Type metatable
-            if (num_args != sizeof...(Args) + 1) {
-                throw luabind::error("Invalid number of arguments");
-            }
-            return shared_user_data::to_lua(L, std::make_shared<Type>(value_mirror<Args>::from_lua(L, Indices)...));
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        // +1 first argument is the Type metatable
+        if (num_args != sizeof...(Args) + 1) {
+            reportError(
+                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        return shared_user_data::to_lua(L, std::make_shared<Type>(value_mirror<Args>::from_lua(L, Indices)...));
     }
 };
 
@@ -78,25 +87,18 @@ struct function_wrapper<R (T::*)(Args...), func> {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            if (num_args != sizeof...(Args) + 1) {
-                throw luabind::error("Invalid number of arguments");
-            }
-            T* self = value_mirror<T*>::from_lua(L, 1);
-            if constexpr (std::is_same_v<R, void>) {
-                (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return 0;
-            } else {
-                return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
-            }
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        if (num_args != sizeof...(Args) + 1) {
+            reportError(
+                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        T* self = value_mirror<T*>::from_lua(L, 1);
+        if constexpr (std::is_same_v<R, void>) {
+            (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
+            return 0;
+        } else {
+            return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
+        }
     }
 };
 
@@ -108,25 +110,18 @@ struct function_wrapper<R (T::*)(Args...) const, func> {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            if (num_args != sizeof...(Args) + 1) {
-                throw luabind::error("Invalid number of arguments");
-            }
-            const T* self = value_mirror<const T*>::from_lua(L, 1);
-            if constexpr (std::is_same_v<R, void>) {
-                (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return 0;
-            } else {
-                return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
-            }
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        if (num_args != sizeof...(Args) + 1) {
+            reportError(
+                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        const T* self = value_mirror<const T*>::from_lua(L, 1);
+        if constexpr (std::is_same_v<R, void>) {
+            (self->*func)(value_mirror<Args>::from_lua(L, Indices)...);
+            return 0;
+        } else {
+            return value_mirror<R>::to_lua(L, (self->*func)(value_mirror<Args>::from_lua(L, Indices)...));
+        }
     }
 };
 
@@ -138,24 +133,16 @@ struct function_wrapper<R (*)(Args...), func> {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            if (num_args != sizeof...(Args)) {
-                throw luabind::error("invalid number of arguments");
-            }
-            if constexpr (std::is_same_v<R, void>) {
-                (*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return 0;
-            } else {
-                return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
-            }
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        if (num_args != sizeof...(Args)) {
+            reportError("Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        if constexpr (std::is_same_v<R, void>) {
+            (*func)(value_mirror<Args>::from_lua(L, Indices)...);
+            return 0;
+        } else {
+            return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
+        }
     }
 };
 
@@ -172,24 +159,24 @@ struct class_function_wrapper<R (*)(Args...), func> {
 
     template <size_t... Indices>
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
-        try {
-            int num_args = lua_gettop(L);
-            if (num_args != sizeof...(Args) + 1) {
-                throw luabind::error("Invalid number of arguments");
-            }
-            if constexpr (std::is_same_v<R, void>) {
-                (*func)(value_mirror<Args>::from_lua(L, Indices)...);
-                return 0;
-            } else {
-                return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
-            }
-        } catch (const luabind::error& e) {
-            lua_pushstring(L, e.what());
-        } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+        int num_args = lua_gettop(L);
+        if (num_args != sizeof...(Args) + 1) {
+            reportError(
+                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
         }
-        lua_error(L); // [[noreturn]]
-        return 0;
+        if constexpr (std::is_same_v<R, void>) {
+            (*func)(value_mirror<Args>::from_lua(L, Indices)...);
+            return 0;
+        } else {
+            return value_mirror<R>::to_lua(L, (*func)(value_mirror<Args>::from_lua(L, Indices)...));
+        }
+    }
+};
+
+template <lua_CFunction func>
+struct lua_function : exception_safe_wrapper<lua_function<func>> {
+    static int invoke(lua_State* L) {
+        return (*func)(L);
     }
 };
 

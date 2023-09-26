@@ -47,7 +47,7 @@ struct ctor_wrapper {
         // +1 first argument is the Type metatable
         if (num_args != sizeof...(Args) + 1) {
             reportError(
-                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
+                "Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args - 1);
         }
         return lua_user_data<Type>::to_lua(L, value_mirror<Args>::from_lua(L, Indices)...);
     }
@@ -68,7 +68,7 @@ struct shared_ctor_wrapper {
         // +1 first argument is the Type metatable
         if (num_args != sizeof...(Args) + 1) {
             reportError(
-                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
+                "Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args - 1);
         }
         return shared_user_data::to_lua(L, std::make_shared<Type>(value_mirror<Args>::from_lua(L, Indices)...));
     }
@@ -90,7 +90,7 @@ struct function_wrapper<R (T::*)(Args...), func> {
         int num_args = lua_gettop(L);
         if (num_args != sizeof...(Args) + 1) {
             reportError(
-                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
+                "Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args - 1);
         }
         T* self = value_mirror<T*>::from_lua(L, 1);
         if constexpr (std::is_same_v<R, void>) {
@@ -113,7 +113,7 @@ struct function_wrapper<R (T::*)(Args...) const, func> {
         int num_args = lua_gettop(L);
         if (num_args != sizeof...(Args) + 1) {
             reportError(
-                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
+                "Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args - 1);
         }
         const T* self = value_mirror<const T*>::from_lua(L, 1);
         if constexpr (std::is_same_v<R, void>) {
@@ -135,7 +135,7 @@ struct function_wrapper<R (*)(Args...), func> {
     static int indexed_call_helper(lua_State* L, std::index_sequence<Indices...>) {
         int num_args = lua_gettop(L);
         if (num_args != sizeof...(Args)) {
-            reportError("Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args);
+            reportError("Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args);
         }
         if constexpr (std::is_same_v<R, void>) {
             (*func)(value_mirror<Args>::from_lua(L, Indices)...);
@@ -162,7 +162,7 @@ struct class_function_wrapper<R (*)(Args...), func> {
         int num_args = lua_gettop(L);
         if (num_args != sizeof...(Args) + 1) {
             reportError(
-                "Invalid number of arguments, should be %lu, but %i were given.", sizeof...(Args), num_args - 1);
+                "Invalid number of arguments, should be %zu, but %i were given.", sizeof...(Args), num_args - 1);
         }
         if constexpr (std::is_same_v<R, void>) {
             (*func)(value_mirror<Args>::from_lua(L, Indices)...);

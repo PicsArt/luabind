@@ -28,9 +28,7 @@ struct value_mirror {
     }
 
     static const T& from_lua(lua_State* L, int idx) {
-        auto ud = user_data::from_lua(L, idx);
-        T* t = dynamic_cast<T*>(ud->object);
-        return *t;
+        return *(value_mirror<T*>::from_lua(L, idx));
     }
 };
 
@@ -40,24 +38,20 @@ struct value_mirror<T*> {
     using raw_type = std::remove_cv_t<T>;
 
     static int to_lua(lua_State* L, T* v) {
-        if constexpr (std::is_base_of_v<std::enable_shared_from_this<raw_type>, raw_type>) {
-            try {
-                std::shared_ptr<raw_type> shared = v->shared_from_this();
-                return value_mirror<std::shared_ptr<raw_type>>::to_lua(L, std::move(shared));
-            } catch (const std::bad_weak_ptr&) {
-            }
-        }
         cpp_user_data<T>::to_lua(L, v);
         return 1;
     }
 
     static T* from_lua(lua_State* L, int idx) {
-        auto ud = user_data::from_lua(L, idx);
-        if (ud == nullptr || ud->object == nullptr) {
-            return nullptr;
+        auto* ud = user_data::from_lua(L, idx);
+        if (ud == nullptr) [[unlikely]] {
+            reportError("Argument at %i has invalid type. Need user_data of type '%s', but got lua type '%s'",
+                        idx,
+                        type_storage::type_name<T>(L).data(),
+                        lua_typename(L, lua_type(L, idx)));
         }
         auto p = dynamic_cast<T*>(ud->object);
-        if (p == nullptr) {
+        if (p == nullptr && ud->object != nullptr) [[unlikely]] {
             reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
                         idx,
                         type_storage::type_name<T>(L).data(),
@@ -87,13 +81,19 @@ struct value_mirror<std::shared_ptr<T>> {
     }
 
     static type from_lua(lua_State* L, int idx) {
-        auto ud = user_data::from_lua(L, idx);
+        auto* ud = user_data::from_lua(L, idx);
+        if (ud == nullptr) [[unlikely]] {
+            reportError("Argument at %i has invalid type. Need user_data of type '%s', but got lua type '%s'",
+                        idx,
+                        type_storage::type_name<T>(L).data(),
+                        lua_typename(L, lua_type(L, idx)));
+        }
         auto sud = dynamic_cast<shared_user_data*>(ud);
-        if (sud == nullptr) {
+        if (sud == nullptr) [[unlikely]] {
             reportError("Argument %i does not represent shared_ptr.", idx);
         }
         auto r = std::dynamic_pointer_cast<T>(sud->data);
-        if (!r) {
+        if (!r && sud->data) [[unlikely]] {
             reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
                         idx,
                         type_storage::type_name<T>(L).data(),
@@ -123,7 +123,7 @@ struct value_mirror<bool> {
 
     static bool from_lua(lua_State* L, int idx) {
         int isb = lua_isboolean(L, idx);
-        if (isb != 1) {
+        if (isb != 1) [[unlikely]] {
             reportError("Provided argument at %i is not a boolean.", idx);
         }
         int r = lua_toboolean(L, idx);
@@ -154,7 +154,6 @@ struct number_mirror {
             return static_cast<raw_type>(lua_tointeger(L, idx));
         } else {
             if (lua_type(L, idx) != LUA_TNUMBER) {
-                // lua_error does longjmp, think about memory leak.
                 reportError("Provided argument at %i is not a number.", idx);
             }
             return static_cast<raw_type>(lua_tonumber(L, idx));

@@ -1,7 +1,7 @@
 #ifndef LUABIND_BIND_HPP
 #define LUABIND_BIND_HPP
 
-#include "base.hpp"
+#include "object.hpp"
 #include "exception.hpp"
 #include "mirror.hpp"
 #include "type_storage.hpp"

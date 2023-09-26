@@ -10,6 +10,10 @@ public:
     String(const std::string_view s)
         : str(s) {}
 
+    static String createString(const std::string_view s) {
+        return String(s);
+    }
+
     void set(const std::string& s) {
         str = s;
     }
@@ -25,6 +29,14 @@ public:
     void copy(const String& from) {
         str = from.str;
     }
+
+    void customError(bool thr) {
+        if (thr) {
+            throw std::runtime_error("Custom std::error");
+        } else {
+            throw "unknown";
+        }
+    }
 };
 
 class Numeric : public luabind::Object {
@@ -36,23 +48,31 @@ public:
     void floating(float) {}
 };
 
+Numeric toNumeric(const String&) {
+    return Numeric {};
+}
+
 class StrLuaTest : public LuaTest {
 protected:
     void SetUp() override {
         luabind::class_<String>(L, "String")
             .constructor<const std::string_view>("new")
             .construct_shared<const std::string_view>("create")
+            .class_function<&String::createString>("createString")
             .function<&String::set>("set")
             .function<&String::get>("get")
             .property<&String::str>("str")
             .function<&String::copy>("copy")
-            .function<&String::copyFrom>("copyFrom");
+            .function<&String::copyFrom>("copyFrom")
+            .function<&String::customError>("customError");
 
         luabind::class_<Numeric>(L, "Numeric")
             .construct_shared<>("create")
             .function<&Numeric::boolean>("boolean")
             .function<&Numeric::integral>("integral")
             .function<&Numeric::floating>("floating");
+
+        luabind::function<&toNumeric>(L, "toNumeric");
 
         EXPECT_EQ(lua_gettop(L), 0);
     }
@@ -134,4 +154,85 @@ TEST_F(StrLuaTest, MirrorErrors) {
         b:floating('abc')
     )--",
         "Argument at 2 has invalid type. Expecting 'number', but got 'string'.");
+}
+
+TEST_F(StrLuaTest, WrapperErrors) {
+    runExpectingError(
+        R"--(
+        s = String:new()
+    )--",
+        "Invalid number of arguments, should be 1, but 0 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:new('abc', 1)
+    )--",
+        "Invalid number of arguments, should be 1, but 2 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:create()
+    )--",
+        "Invalid number of arguments, should be 1, but 0 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:create('abc', 1)
+    )--",
+        "Invalid number of arguments, should be 1, but 2 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:createString()
+    )--",
+        "Invalid number of arguments, should be 1, but 0 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:createString('abc', 1)
+    )--",
+        "Invalid number of arguments, should be 1, but 2 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:new('abc')
+        s:set()
+    )--",
+        "Invalid number of arguments, should be 1, but 0 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:createString('abc')
+        s:set('def', 2, 3)
+    )--",
+        "Invalid number of arguments, should be 1, but 3 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:create('abc')
+        s:customError(true)
+    )--",
+        "Custom std::error");
+
+    runExpectingError(
+        R"--(
+        s = String:create('abc')
+        s:customError(false)
+    )--",
+        "Unknown exception while trying to call C function from Lua.");
+
+    runExpectingError(
+        R"--(
+        s = String:create('abc')
+        n = toNumeric()
+    )--",
+        "Invalid number of arguments, should be 1, but 0 were given.");
+
+    runExpectingError(
+        R"--(
+        s = String:create('abc')
+        n = toNumeric(s)
+        n = toNumeric(s, 2)
+    )--",
+        "Invalid number of arguments, should be 1, but 2 were given.");
 }

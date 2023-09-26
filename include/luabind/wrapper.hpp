@@ -25,7 +25,7 @@ struct exception_safe_wrapper {
         } catch (const std::exception& e) {
             lua_pushstring(L, e.what());
         } catch (...) {
-            lua_pushliteral(L, "Unknown error while trying to call C function from Lua.");
+            lua_pushliteral(L, "Unknown exception while trying to call C function from Lua.");
         }
         lua_error(L); // [[noreturn]]
         return 0;

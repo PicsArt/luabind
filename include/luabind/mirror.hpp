@@ -45,14 +45,14 @@ struct value_mirror<T*> {
     static T* from_lua(lua_State* L, int idx) {
         auto* ud = user_data::from_lua(L, idx);
         if (ud == nullptr) [[unlikely]] {
-            reportError("Argument at %i has invalid type. Need user_data of type '%s', but got lua type '%s'",
+            reportError("Argument at %i has invalid type. Expecting user_data of type '%s', but got lua type '%s'",
                         idx,
                         type_storage::type_name<T>(L).data(),
                         lua_typename(L, lua_type(L, idx)));
         }
         auto p = dynamic_cast<T*>(ud->object);
         if (p == nullptr && ud->object != nullptr) [[unlikely]] {
-            reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
+            reportError("Argument at %i has invalid type. Expecting '%s' but got '%s'.",
                         idx,
                         type_storage::type_name<T>(L).data(),
                         ud->info->name.c_str());
@@ -83,18 +83,18 @@ struct value_mirror<std::shared_ptr<T>> {
     static type from_lua(lua_State* L, int idx) {
         auto* ud = user_data::from_lua(L, idx);
         if (ud == nullptr) [[unlikely]] {
-            reportError("Argument at %i has invalid type. Need user_data of type '%s', but got lua type '%s'",
+            reportError("Argument at %i has invalid type. Expecting user_data of type '%s', but got lua type '%s'",
                         idx,
                         type_storage::type_name<T>(L).data(),
                         lua_typename(L, lua_type(L, idx)));
         }
         auto sud = dynamic_cast<shared_user_data*>(ud);
         if (sud == nullptr) [[unlikely]] {
-            reportError("Argument %i does not represent shared_ptr.", idx);
+            reportError("Argument at %i is not a shared_ptr.", idx);
         }
         auto r = std::dynamic_pointer_cast<T>(sud->data);
         if (!r && sud->data) [[unlikely]] {
-            reportError("Argument at %i has invalid type. Need '%s' but got '%s'.",
+            reportError("Argument at %i has invalid type. Expecing '%s' but got '%s'.",
                         idx,
                         type_storage::type_name<T>(L).data(),
                         ud->info->name.c_str());
@@ -124,7 +124,9 @@ struct value_mirror<bool> {
     static bool from_lua(lua_State* L, int idx) {
         int isb = lua_isboolean(L, idx);
         if (isb != 1) [[unlikely]] {
-            reportError("Provided argument at %i is not a boolean.", idx);
+            reportError("Argument at %i has invalid type. Expecting 'boolean', but got '%s'.",
+                        idx,
+                        lua_typename(L, lua_type(L, idx)));
         }
         int r = lua_toboolean(L, idx);
         return static_cast<bool>(r);
@@ -149,12 +151,16 @@ struct number_mirror {
     static raw_type from_lua(lua_State* L, int idx) {
         if constexpr (std::is_integral_v<raw_type>) {
             if (0 == lua_isinteger(L, idx)) {
-                reportError("Provided argument at %i is not an integer.", idx);
+                reportError("Argument at %i has invalid type. Expecting 'integer', but got '%s'.",
+                            idx,
+                            lua_typename(L, lua_type(L, idx)));
             }
             return static_cast<raw_type>(lua_tointeger(L, idx));
         } else {
             if (lua_type(L, idx) != LUA_TNUMBER) {
-                reportError("Provided argument at %i is not a number.", idx);
+                reportError("Argument at %i has invalid type. Expecting 'number', but got '%s'.",
+                            idx,
+                            lua_typename(L, lua_type(L, idx)));
             }
             return static_cast<raw_type>(lua_tonumber(L, idx));
         }
@@ -192,8 +198,10 @@ struct value_mirror<std::string_view> {
     }
 
     static std::string_view from_lua(lua_State* L, int idx) {
-        if (lua_isstring(L, idx) == 0) {
-            reportError("Provided argument at %i is not a string.", idx);
+        if (lua_type(L, idx) != LUA_TSTRING) {
+            reportError("Argument at %i has invalid type. Expecting 'string', but got '%s'.",
+                        idx,
+                        lua_typename(L, lua_type(L, idx)));
         }
         size_t len;
         const char* lv = lua_tolstring(L, idx, &len);
@@ -202,18 +210,36 @@ struct value_mirror<std::string_view> {
 };
 
 template <>
+struct value_mirror<const std::string_view> : value_mirror<std::string_view> {};
+
+template <>
+struct value_mirror<const std::string_view&> : value_mirror<std::string_view> {};
+
+template <>
+struct value_mirror<std::string_view*> {};
+
+template <>
+struct value_mirror<const std::string_view*> {};
+
+template <>
 struct value_mirror<std::string> {
     static int to_lua(lua_State* L, const std::string& v) {
         return value_mirror<std::string_view>::to_lua(L, v);
     }
 
     static std::string from_lua(lua_State* L, int idx) {
-        return std::string(value_mirror<std::string_view>::from_lua(L, idx));
+        return std::string {value_mirror<std::string_view>::from_lua(L, idx)};
     }
 };
 
 template <>
+struct value_mirror<const std::string> : value_mirror<std::string> {};
+
+template <>
 struct value_mirror<const std::string&> : value_mirror<std::string> {};
+
+template <>
+struct value_mirror<std::string*> {};
 
 template <>
 struct value_mirror<const std::string*> {};

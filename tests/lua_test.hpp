@@ -48,10 +48,12 @@ public:
             const std::string_view errorMessage = luabind::value_mirror<std::string_view>::from_lua(L, -1);
             EXPECT_EQ(errorMessage, expectedMessage);
         }
-        int cr = lua_pcall(L, 0, 0, 0);
-        EXPECT_NE(cr, LUA_OK);
-        const std::string_view errorMessage = luabind::value_mirror<std::string_view>::from_lua(L, -1);
-        EXPECT_EQ(errorMessage, expectedMessage);
+        int should_not_be_zero = lua_pcall(L, 0, 0, 0);
+        EXPECT_NE(should_not_be_zero, LUA_OK);
+        if (should_not_be_zero != LUA_OK) {
+            const std::string_view errorMessage = luabind::value_mirror<std::string_view>::from_lua(L, -1);
+            EXPECT_EQ(errorMessage, expectedMessage);
+        }
     }
 
 protected:

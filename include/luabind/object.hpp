@@ -1,5 +1,5 @@
-#ifndef LUABIND_BASE_HPP
-#define LUABIND_BASE_HPP
+#ifndef LUABIND_OBJECT_HPP
+#define LUABIND_OBJECT_HPP
 
 namespace luabind {
 
@@ -12,4 +12,4 @@ inline Object::~Object() = default;
 
 } // namespace luabind
 
-#endif // LUABIND_BASE_HPP
+#endif // LUABIND_OBJECT_HPP

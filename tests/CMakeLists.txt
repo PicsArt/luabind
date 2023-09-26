@@ -21,3 +21,8 @@ add_executable(custom_functions custom_functions.cpp lua_test.hpp)
 target_link_libraries(custom_functions luabind ${LUA_LIB_NAME} gtest_main)
 add_test(NAME custom_functions_test COMMAND custom_functions)
 
+add_executable(errors errors.cpp lua_test.hpp)
+target_link_libraries(errors luabind ${LUA_LIB_NAME} gtest_main)
+add_test(NAME errors_test COMMAND errors)
+
+

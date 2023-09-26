@@ -1,7 +1,7 @@
 #ifndef LUABIND_USER_DATA
 #define LUABIND_USER_DATA
 
-#include "base.hpp"
+#include "object.hpp"
 #include "type_storage.hpp"
 
 #include <memory>

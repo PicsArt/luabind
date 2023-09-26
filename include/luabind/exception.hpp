@@ -26,7 +26,7 @@ private:
 [[gnu::format(printf, 1, 2)]] inline void reportError(const char* fmt, ...) {
     std::va_list args;
     va_start(args, fmt);
-    constexpr size_t bufferSize = 1024;
+    constexpr size_t bufferSize = 256;
     char buffer[bufferSize];
     std::vsnprintf(buffer, bufferSize, fmt, args);
     va_end(args);

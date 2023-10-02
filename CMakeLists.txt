@@ -2,34 +2,30 @@ cmake_minimum_required(VERSION 3.21)
 
 project(luabind)
 
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_STANDARD 20)
+set(LUABIND_LUA_LIB_NAME luabind_lua CACHE STRING "CMake name of lua library, luabind should be linked with.")
+set(LUABIND_LUA_CPP OFF CACHE BOOL "Whether lua was compiled as C++ and headers should be included without extern 'C'.")
 
-# variable to use custom library
-set(LUA_LIB_NAME luabind_lua CACHE STRING "lua library name")
-
-# variable to include tests to build phase
-set(LUABIND_TEST ON CACHE BOOL "variable to determine whether tests are included in build phase or not")
-
-option(CODE_COVERAGE "Enable coverage reporting" OFF)
+option(LUABIND_TESTS "Enable tests." OFF)
+option(LUABIND_CODE_COVERAGE "Enable coverage reporting in tests" OFF)
 
 add_subdirectory(third_party)
 
 add_library(luabind INTERFACE)
 target_include_directories(luabind INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(luabind INTERFACE ${LUA_LIB_NAME})
+target_link_libraries(luabind INTERFACE ${LUABIND_LUA_LIB_NAME})
 
-set(INCLUDE_LUA_LIB_WITH_EXTERN_C ON CACHE BOOL "flag to determine whether lua library is included with extern 'C'")
-if(INCLUDE_LUA_LIB_WITH_EXTERN_C)
-    add_compile_definitions(INCLUDE_LUA_LIB_WITH_EXTERN_C)
-    target_compile_definitions(luabind INTERFACE INCLUDE_LUA_LIB_WITH_EXTERN_C)
-endif(INCLUDE_LUA_LIB_WITH_EXTERN_C)
+if(LUABIND_LUA_CPP)
+    add_compile_definitions(LUABIND_LUA_CPP)
+    target_compile_definitions(luabind INTERFACE LUABIND_LUA_CPP)
+endif(LUABIND_LUA_CPP)
 
-if(LUABIND_TEST)
+if(LUABIND_TESTS)
     target_compile_options(luabind INTERFACE -Wall -Wextra -Wnewline-eof -Wformat -Werror)
 
-    if(CODE_COVERAGE)
+    if(LUABIND_CODE_COVERAGE)
         # Add required flags (GCC & LLVM/Clang)
         target_compile_options(luabind INTERFACE
             -O0        # no optimization
@@ -37,7 +33,7 @@ if(LUABIND_TEST)
             --coverage # sets all required flags
         )
         target_link_options(luabind INTERFACE --coverage)
-    endif(CODE_COVERAGE)
+    endif(LUABIND_CODE_COVERAGE)
 
     enable_testing()
     add_subdirectory(tests)

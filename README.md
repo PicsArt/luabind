@@ -65,9 +65,9 @@ There are some specifications when you want to use `luabind` as submodule. As a 
 
 | CMake variable | Purpose |
 | ------ | ------ |
-| LUA_LIB_NAME (STRING) | variable to link specific library (luabind_lua is set as default) |
-| INCLUDE_LUA_LIB_WITH_EXTERN_C (BOOL) | variable to add/remove extern "C" when including lua headers |
-| LUABIND_TEST (BOOL) | variable for inclusion/exclusion of test into build phase |
+| LUABIND_LUA_LIB_NAME (STRING) | variable to link specific library (luabind_lua is set as default) |
+| LUABIND_LUA_CPP (BOOL) | variable to add/remove extern "C" when including lua headers |
+| LUABIND_TESTS (BOOL) | variable for inclusion/exclusion of test into build phase |
 
 
 ## Command line build steps
@@ -94,9 +94,7 @@ cmake --preset luabind -DINCLUDE_LUA_LIB_WITH_EXTERN_C=OFF
 
 In this example `luabind` is used as submodule.
 ```
-    set(INCLUDE_LUA_LIB_WITH_EXTERN_C ON)
-    set(LUA_LIB_NAME lua)
-    set(LUABIND_TEST OFF)
+    set(LUABIND_LUA_LIB_NAME lua)
 
     add_subdirectory(luabind)
 ```

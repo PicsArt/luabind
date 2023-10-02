@@ -1,16 +1,16 @@
 #ifndef LUABIND_LUA_HPP
 #define LUABIND_LUA_HPP
 
-#ifdef INCLUDE_LUA_LIB_WITH_EXTERN_C
+#ifndef LUABIND_LUA_CPP
 extern "C" {
-#endif // INCLUDE_LUA_LIB_WITH_EXTERN_C
+#endif // LUABIND_LUA_CPP
 
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 
-#ifdef INCLUDE_LUA_LIB_WITH_EXTERN_C
+#ifndef LUABIND_LUA_CPP
 }
-#endif // INCLUDE_LUA_LIB_WITH_EXTERN_C
+#endif // LUABIND_LUA_CPP
 
 #endif // LUABIND_LUA_HPP

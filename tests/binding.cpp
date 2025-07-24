@@ -420,6 +420,29 @@ private:
     std::vector<int> _array;
 };
 
+class ReadOnlyArray : public luabind::Object {
+public:
+    ReadOnlyArray(std::vector<int>&& v)
+        : _array(std::move(v)) {}
+
+    int getElement(size_t idx) {
+        return _array[idx - 1];
+    }
+
+    static int ctor(lua_State* L) {
+        std::vector<int> v;
+        const int top = lua_gettop(L);
+        for (int i = 2; i <= top; ++i) {
+            v.push_back(luabind::value_mirror<int>::from_lua(L, i));
+        }
+        return luabind::value_mirror<std::shared_ptr<ReadOnlyArray>>::to_lua(
+            L, std::make_shared<ReadOnlyArray>(std::move(v)));
+    }
+
+private:
+    std::vector<int> _array;
+};
+
 class ArrayTest : public LuaTest {
 protected:
     void SetUp() override {
@@ -427,6 +450,10 @@ protected:
         luabind::class_<Array>(L, "Array")
             .constructor<&Array::ctor>("new")
             .array_access<&Array::getElement, &Array::setElement>();
+
+        luabind::class_<ReadOnlyArray>(L, "ReadOnlyArray")
+            .constructor<&ReadOnlyArray::ctor>("new")
+            .array_access<&ReadOnlyArray::getElement>();
 
         // clang-format on
         EXPECT_EQ(lua_gettop(L), 0);
@@ -453,6 +480,27 @@ TEST_F(ArrayTest, ArrayAccess) {
         assert(a[3] == 8)
         assert(a[4] == 9)
         assert(a[5] == 10)
+    )--");
+    EXPECT_EQ(r, LUA_OK);
+}
+
+TEST_F(ArrayTest, ReadOnlyArrayAccess) {
+    int r = run(R"--(
+        ro = ReadOnlyArray:new(1, 2, 3, 4, 5);
+        -- Test that we can read from read-only array
+        assert(ro[1] == 1)
+        assert(ro[2] == 2)
+        assert(ro[3] == 3)
+        assert(ro[4] == 4)
+        assert(ro[5] == 5)
+        
+        -- Test that writing to read-only array fails
+        local success, err = pcall(function() ro[1] = 10 end)
+        assert(not success)
+        assert(string.find(err, "does not provide array set access"))
+        
+        -- Verify values are unchanged
+        assert(ro[1] == 1)
     )--");
     EXPECT_EQ(r, LUA_OK);
 }

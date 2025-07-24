@@ -138,7 +138,7 @@ public:
     template <auto getter>
         requires(!std::is_same_v<decltype(getter), lua_CFunction>)
     class_& array_access() {
-        return array_access(function_wrapper<decltype(getter), getter>::invoke);
+        return array_access<function_wrapper<decltype(getter), getter>::invoke>();
     }
 
     template <lua_CFunction getter>
